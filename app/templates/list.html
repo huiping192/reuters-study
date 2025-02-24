@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- 使用Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>News List</title>
+</head>
+<body class="bg-gray-50">
+<div class="max-w-4xl mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-8 text-gray-800">Daily News</h1>
+
+    <!-- 新闻列表 -->
+    <!-- 修改新闻项链接部分 -->
+    <div class="space-y-4">
+        {% for main_cat, sub_cats in news.items() %}
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">{{ main_cat }}</h2>
+            {% for sub_cat, items in sub_cats.items() %}
+            <div class="ml-4 mb-6">
+                <h3 class="text-lg font-semibold mb-3 text-gray-700">{{ sub_cat }}</h3>
+                <div class="space-y-3">
+                    {% for item in items %}
+                    <a href="/news/{{ item.url | urlencode }}"
+                       class="block bg-white p-4 rounded-lg shadow hover:shadow-md transition">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h4 class="text-base font-medium text-gray-800">{{ item.title }}</h4>
+                                <div class="mt-1 text-sm text-gray-500">
+                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ main_cat }}</span>
+                                    {% if sub_cat != "General" %}
+                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded ml-2">{{ sub_cat }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <span class="text-sm text-gray-400 ml-4 whitespace-nowrap">{{ item.date }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+</body>
+</html>
