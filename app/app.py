@@ -8,13 +8,6 @@ from reuters_manager import get_reuters_news_with_subcategory, get_reuters_artic
 import urllib.parse
 from flask import send_from_directory
 import os
-from dotenv import load_dotenv
-
-# 加载环境变量
-load_dotenv()
-REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 
 app = Flask(__name__)
 

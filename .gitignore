@@ -6,7 +6,7 @@ __pycache__/
 .env
 *.env.local
 secrets/
-
+*.wav
 # C extensions
 *.so
 
