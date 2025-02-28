@@ -13,26 +13,39 @@ class ArticleProcessor:
             timeout=120
         )
 
-    def process_article(self, text: str) -> str:
+    def process_article(self, text: str):
         """处理整篇文章并返回结构化结果"""
         return self._process_single_paragraph(text)
 
-    def _process_single_paragraph(self, text: str) -> str:
+    def _process_single_paragraph(self, text: str):
         """处理单个段落（移除<think>标签内容）"""
         raw_response = self._get_ai_response(text).choices[0].message.content
+        print(f"AI Response: {raw_response}")
+        result = {
+            "vocabulary": [],
+            "translation": ""
+        }
 
-        # 使用正则表达式移除<think>标签及其内容
-        cleaned_text = re.sub(
-            r'<think>.*?</think>',  # 匹配<think>标签
-            '',  # 替换为空字符串
-            raw_response,  # 原始文本
-            flags=re.DOTALL  # 允许跨行匹配
-        )
+        # 分割词汇和翻译部分
+        vocab_section, trans_section = raw_response.split("【Translation】")
 
-        # 移除可能残留的空白行
-        cleaned_text = re.sub(r'\n\s*\n', '\n', cleaned_text).strip()
+        # 解析词汇部分
+        vocab_lines = [line.strip() for line in vocab_section.split("【Vocabulary】")[1].split("\n") if line.strip()]
+        for line in vocab_lines:
+            if line and '｜' in line:
+                parts = line.split('｜')
+                if len(parts) >= 4:
+                    result["vocabulary"].append({
+                        "word": parts[0].strip(),
+                        "pos": parts[1].strip(),
+                        "def_cn": parts[2].strip(),
+                        "example": parts[3].strip()
+                    })
 
-        return cleaned_text
+        # 解析翻译部分
+        result["translation"] = trans_section.strip()
+
+        return result
 
     def _get_ai_response(self, text: str) -> ChatCompletion:
         """获取DeepSeek API响应"""
@@ -42,14 +55,18 @@ class ArticleProcessor:
 3. 对每个词汇提供：
    - 词性
    - 中文释义
-   - 中英对照例句
+   - 例句
 4. Toeic 700分以上水平
 
 输出格式：
-1. 单词｜词性：释义
+
+【Vocabulary】
+1. 单词｜词性｜中文释义｜例句
+2. 单词｜词性｜中文释义｜例句
 ...
 
-中文翻译: 翻译内容
+【Translation】
+翻译内容
 """
 
         return self.client.chat.completions.create(

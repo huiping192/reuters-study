@@ -78,16 +78,16 @@ def handle_translate():
             return jsonify({'error': 'Empty text content'}), 400
 
         processor = ArticleProcessor()
-        translated_text = processor.process_article(input_text)
+        translated_objc = processor.process_article(input_text)
 
         # 验证返回结果
-        if not translated_text or not isinstance(translated_text, str):
+        if not translated_objc:
             raise ValueError("Invalid translation result")
 
-        print(f"Translation Result: {translated_text}")  # 添加类型验证
+        print(f"Translation Result: {translated_objc}")  # 添加类型验证
         return jsonify({
             'index': data.get('index', -1),
-            'translation': translated_text
+            'translation': translated_objc
         })
 
     except Exception as e:
