@@ -34,12 +34,13 @@ class ArticleProcessor:
         for line in vocab_lines:
             if line and '｜' in line:
                 parts = line.split('｜')
-                if len(parts) >= 4:
+                if len(parts) >= 5:
                     result["vocabulary"].append({
                         "word": parts[0].strip(),
-                        "pos": parts[1].strip(),
-                        "def_cn": parts[2].strip(),
-                        "example": parts[3].strip()
+                        "spell": parts[1].strip(),
+                        "pos": parts[2].strip(),
+                        "def_cn": parts[3].strip(),
+                        "example": parts[4].strip()
                     })
 
         # 解析翻译部分
@@ -50,19 +51,19 @@ class ArticleProcessor:
     def _get_ai_response(self, text: str) -> ChatCompletion:
         """获取DeepSeek API响应"""
         system_prompt = """作为专业英语教学助手，请：
-1. 翻译为地道中文
-2. 识别1-5个难点单词,词汇
-3. 对每个词汇提供：
+- 翻译为地道中文
+- 识别1-5个CEFR C2/C1级别词汇
+- 对每个词汇提供：
+   - 发音
    - 词性
    - 中文释义
    - 例句
-4. Toeic 700分以上水平
 
 输出格式：
 
 【Vocabulary】
-1. 单词｜词性｜中文释义｜例句
-2. 单词｜词性｜中文释义｜例句
+1. 单词｜发音 | 词性｜中文释义｜例句
+2. 单词｜发音 | 词性｜中文释义｜例句
 ...
 
 【Translation】
