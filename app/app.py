@@ -84,6 +84,7 @@ def translate():
         if not translated_objc:
             raise ValueError("Invalid translation result")
 
+        print(translated_objc)
         # 渲染模板并返回HTML
         html = render_template('translation_template.html', 
                               vocabulary=translated_objc['vocabulary'],

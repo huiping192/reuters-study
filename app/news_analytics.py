@@ -34,13 +34,12 @@ class ArticleProcessor:
         for line in vocab_lines:
             if line and '｜' in line:
                 parts = line.split('｜')
-                if len(parts) >= 5:
+                if len(parts) >= 4:  # 确保至少有4个部分
                     result["vocabulary"].append({
                         "word": parts[0].strip(),
-                        "spell": parts[1].strip(),
-                        "pos": parts[2].strip(),
-                        "def_cn": parts[3].strip(),
-                        "example": parts[4].strip()
+                        "pos": parts[1].strip(),
+                        "def_cn": parts[2].strip(),
+                        "example": parts[3].strip()  # 直接使用第四个部分作为例句
                     })
 
         # 解析翻译部分
@@ -62,8 +61,8 @@ class ArticleProcessor:
 输出格式：
 
 【Vocabulary】
-1. 单词｜发音 | 词性｜中文释义｜例句
-2. 单词｜发音 | 词性｜中文释义｜例句
+单词｜词性｜中文释义｜例句
+单词｜词性｜中文释义｜例句
 ...
 
 【Translation】
