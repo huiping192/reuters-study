@@ -1,0 +1,26 @@
+<ul style="list-style-type: none; padding: 0; margin-bottom: 2rem;">
+    {% for vocab in vocabulary %}
+    <li style="margin-bottom: 0.5rem; padding: 0.75rem; background-color: #f8f9fa; border-radius: 6px;">
+        <div style="color: #2c3e50; font-weight: 600; display: flex; align-items: baseline;">
+            <span style="font-size: 1.1em; margin-right: 8px;">{{ vocab.word }}</span>
+            <span style="color: #9b59b6; font-size: 0.85em; margin-right: 5px;">/{{ vocab.spell }}/</span>
+            <span style="color: #e74c3c; margin: 0 4px;">｜</span>
+            <span style="color: #3498db; font-size: 0.9em;">{{ vocab.pos }}</span>
+        </div>
+        <div style="margin-top: 0.25rem; color: #34495e; font-size: 0.95em;">
+            <strong style="margin-right: 6px;">释义：</strong>{{ vocab.def_cn }}
+        </div>
+        <div style="margin-top: 0.25rem; color: #7f8c8d; font-size: 0.9em; line-height: 0.8;">
+            <strong style="margin-right: 6px;">例句：</strong><em>{{ vocab.example }}</em>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+<div style="padding: 0.8rem; background-color: #ecf0f1; border-radius: 4px;">
+    <div style="color: #27ae60; font-weight: 600; margin-bottom: 0.3rem;">
+        中文翻译：
+    </div>
+    <div style="color: #2c3e50; line-height: 1;">
+        {{ translation }}
+    </div>
+</div> 

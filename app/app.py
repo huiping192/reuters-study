@@ -66,7 +66,7 @@ def detail(encoded_url):
 
 
 @app.route('/translate', methods=['POST'])
-def handle_translate():
+def translate():
     data = request.get_json()
     try:
         if not data or 'text' not in data:
@@ -84,10 +84,15 @@ def handle_translate():
         if not translated_objc:
             raise ValueError("Invalid translation result")
 
-        print(f"Translation Result: {translated_objc}")  # 添加类型验证
+        # 渲染模板并返回HTML
+        html = render_template('translation_template.html', 
+                              vocabulary=translated_objc['vocabulary'],
+                              translation=translated_objc['translation'])
+
         return jsonify({
             'index': data.get('index', -1),
-            'translation': translated_objc
+            'translation': translated_objc,
+            'html': html
         })
 
     except Exception as e:
@@ -117,7 +122,6 @@ def handle_tts():
 @app.route('/tts/<filename>')
 def serve_audio(filename):
     return send_from_directory(TTS_DIR, filename)
-
 
 if __name__ == '__main__':
     app.run(debug=True)
