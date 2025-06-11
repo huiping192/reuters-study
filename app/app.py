@@ -9,7 +9,18 @@ import urllib.parse
 from flask import send_from_directory
 import os
 
+# 导入新增的模块
+from models.database import init_db
+from utils.session_manager import SessionManager
+from services.vocabulary_service import VocabularyService
+
 app = Flask(__name__)
+
+# 配置session（简化版）
+SessionManager.set_session_config(app)
+
+# 初始化数据库
+init_db(app)
 
 # 配置音频存储路径
 TTS_DIR = os.path.join(app.static_folder, 'tts')
@@ -77,8 +88,19 @@ def translate():
         if not input_text:
             return jsonify({'error': 'Empty text content'}), 400
 
+        # 获取固定用户ID
+        user_id = SessionManager.get_user_id()
+        
+        # 获取来源URL（如果有的话）
+        source_url = data.get('source_url')
+
         processor = ArticleProcessor()
-        translated_objc = processor.process_article(input_text)
+        # 传递用户ID和来源URL以启用词汇收集
+        translated_objc = processor.process_article(
+            input_text, 
+            user_id=user_id,
+            source_url=source_url
+        )
 
         # 验证返回结果
         if not translated_objc:
@@ -123,6 +145,101 @@ def handle_tts():
 @app.route('/tts/<filename>')
 def serve_audio(filename):
     return send_from_directory(TTS_DIR, filename)
+
+
+# 词汇相关API端点
+@app.route('/api/vocabulary', methods=['GET'])
+def get_vocabulary():
+    """获取词汇列表"""
+    try:
+        user_id = SessionManager.get_user_id()
+        
+        # 获取查询参数
+        filters = {
+            'limit': request.args.get('limit', type=int),
+            'offset': request.args.get('offset', type=int),
+            'search': request.args.get('search'),
+            'difficulty_level': request.args.get('difficulty_level'),
+            'sort_by': request.args.get('sort_by', 'created_at'),
+            'sort_order': request.args.get('sort_order', 'desc')
+        }
+        
+        vocabularies = VocabularyService.get_user_vocabulary(user_id, filters)
+        
+        return jsonify({
+            'success': True,
+            'data': vocabularies,
+            'total': len(vocabularies)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/vocabulary/stats', methods=['GET'])
+def get_vocabulary_stats():
+    """获取词汇统计信息"""
+    try:
+        user_id = SessionManager.get_user_id()
+        stats = VocabularyService.get_vocabulary_stats(user_id)
+        
+        return jsonify({
+            'success': True,
+            'data': stats
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/vocabulary/<int:vocab_id>', methods=['GET'])
+def get_vocabulary_detail(vocab_id):
+    """获取词汇详情"""
+    try:
+        user_id = SessionManager.get_user_id()
+        vocab_detail = VocabularyService.get_vocabulary_detail(vocab_id, user_id)
+        
+        if not vocab_detail:
+            return jsonify({
+                'success': False,
+                'error': '词汇不存在'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': vocab_detail
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/vocabulary/<int:vocab_id>', methods=['DELETE'])
+def delete_vocabulary(vocab_id):
+    """删除词汇"""
+    try:
+        VocabularyService.delete_vocabulary(vocab_id)
+        
+        return jsonify({
+            'success': True,
+            'message': '词汇删除成功'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)

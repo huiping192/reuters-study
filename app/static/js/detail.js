@@ -20,11 +20,18 @@ async function handleTranslate(index) {
         translationDiv.innerHTML = '<div class="text-blue-500">Translating...</div>';
         translationDiv.classList.remove('hidden');
 
-        // 发送请求
+        // 获取当前页面URL作为来源
+        const sourceUrl = window.location.href;
+
+        // 发送请求，包含来源URL以启用词汇收集
         const response = await fetch('/translate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: paragraph, index })
+            body: JSON.stringify({ 
+                text: paragraph, 
+                index: index,
+                source_url: sourceUrl  // 添加来源URL
+            })
         });
 
         // 处理响应
@@ -41,6 +48,11 @@ async function handleTranslate(index) {
 
         // 直接使用服务器返回的HTML
         translationDiv.innerHTML = result.html;
+
+        // 显示词汇收集成功提示（可选）
+        if (result.translation && result.translation.vocabulary && result.translation.vocabulary.length > 0) {
+            console.log(`已收集 ${result.translation.vocabulary.length} 个词汇到个人词汇库`);
+        }
 
     } catch (error) {
         console.error('Translation Failed:', error);

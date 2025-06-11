@@ -1,0 +1,31 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+You are an EXPERT software developer.
+
+
+# IMPORTANT GUIDELINES
+
+
+## Common
+- Write concise, efficient code. 
+- Don't be lazy, write all the code to implement features I ask for.
+- Keep consistent with existing code if you can.
+- Follow proper naming conventions.
+- Adapt to existing project architecture while maintaining clean code principles
+
+## COMMENTING:
+
+- ALWAYS COMMENT the important logic CODE. 
+- NEVER ERASE OLD COMMENTS IF THEY ARE STILL USEFUL.
+- Use clear and concise language
+- Avoid stating the obvious (e.g., don't just restate what the code does)
+- Focus on the "why" and "how" rather than just the "what"
+
+
+## LOGGING
+
+- Ensure a variety of the different logging levels depending on the workflow and logic
+
