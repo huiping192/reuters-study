@@ -87,15 +87,15 @@
 </div>
 
 <!-- 词汇详情模态框 -->
-<div id="vocabulary-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden">
+<div id="vocabulary-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
     <div class="min-h-screen px-4 text-center">
         <div class="fixed inset-0" aria-hidden="true">
             <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
         </div>
-        <div class="inline-block align-middle my-8 p-6 w-full max-w-2xl text-left bg-white rounded-lg shadow-xl">
+        <div class="inline-block align-middle my-8 p-6 w-full max-w-2xl text-left bg-white rounded-lg shadow-xl relative">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold" id="modal-word"></h3>
-                <button class="text-gray-500 hover:text-gray-700" onclick="closeModal()">
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 focus:outline-none">
                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -204,6 +204,13 @@ async function loadStats() {
 // 显示词汇详情
 async function showVocabularyDetail(vocabId) {
     try {
+        const modal = document.getElementById('vocabulary-modal');
+        const content = document.getElementById('modal-content');
+        
+        // 显示加载状态
+        modal.classList.remove('hidden');
+        content.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i></div>';
+        
         const response = await fetch(`/api/vocabulary/${vocabId}`);
         const data = await response.json();
         
@@ -211,7 +218,6 @@ async function showVocabularyDetail(vocabId) {
             const vocab = data.data;
             document.getElementById('modal-word').textContent = vocab.word;
             
-            const content = document.getElementById('modal-content');
             content.innerHTML = `
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -240,18 +246,35 @@ async function showVocabularyDetail(vocabId) {
                     </div>
                 </div>
             `;
-            
-            document.getElementById('vocabulary-modal').classList.remove('hidden');
+        } else {
+            content.innerHTML = '<div class="text-red-500 text-center py-4">加载失败，请重试</div>';
         }
     } catch (error) {
         console.error('加载词汇详情失败:', error);
+        document.getElementById('modal-content').innerHTML = 
+            '<div class="text-red-500 text-center py-4">加载失败，请重试</div>';
     }
 }
 
 // 关闭模态框
 function closeModal() {
-    document.getElementById('vocabulary-modal').classList.add('hidden');
+    const modal = document.getElementById('vocabulary-modal');
+    modal.classList.add('hidden');
 }
+
+// 点击模态框背景关闭
+document.getElementById('vocabulary-modal').addEventListener('click', function(event) {
+    if (event.target === this) {
+        closeModal();
+    }
+});
+
+// 按ESC键关闭模态框
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeModal();
+    }
+});
 
 // 删除词汇
 async function deleteVocabulary(vocabId) {
