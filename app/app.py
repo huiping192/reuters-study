@@ -164,12 +164,22 @@ def get_vocabulary():
             'sort_order': request.args.get('sort_order', 'desc')
         }
         
+        # 计算分页
+        page = request.args.get('page', 1, type=int)
+        limit = filters['limit'] or 20
+        offset = (page - 1) * limit
+        filters['limit'] = limit
+        filters['offset'] = offset
+        
         vocabularies = VocabularyService.get_user_vocabulary(user_id, filters)
+        total = VocabularyService.get_vocabulary_count(user_id, filters)
         
         return jsonify({
             'success': True,
             'data': vocabularies,
-            'total': len(vocabularies)
+            'total': total,
+            'page': page,
+            'limit': limit
         })
         
     except Exception as e:
@@ -239,6 +249,12 @@ def delete_vocabulary(vocab_id):
             'success': False,
             'error': str(e)
         }), 500
+
+
+@app.route('/vocabulary')
+def vocabulary_list():
+    """词汇库页面"""
+    return render_template('vocabulary/list.html')
 
 
 if __name__ == '__main__':

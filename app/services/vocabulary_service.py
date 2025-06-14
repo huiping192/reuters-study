@@ -182,4 +182,29 @@ class VocabularyService:
             
         except Exception as e:
             print(f"标记掌握程度失败: {str(e)}")
-            return False 
+            return False
+    
+    @staticmethod
+    def get_vocabulary_count(user_id, filters=None):
+        """获取词汇总数"""
+        if not filters:
+            filters = {}
+        
+        query = Vocabulary.query.filter_by(user_id=user_id)
+        
+        # 搜索过滤
+        if filters.get('search'):
+            search_term = f"%{filters['search']}%"
+            query = query.filter(
+                db.or_(
+                    Vocabulary.word.like(search_term),
+                    Vocabulary.definition_cn.like(search_term),
+                    Vocabulary.definition_en.like(search_term)
+                )
+            )
+        
+        # 难度等级过滤
+        if filters.get('difficulty_level'):
+            query = query.filter_by(difficulty_level=filters['difficulty_level'])
+        
+        return query.count() 

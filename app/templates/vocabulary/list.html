@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}我的词汇库{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold mb-4">我的词汇库</h1>
+        
+        <!-- 统计信息 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-700">总词汇量</h3>
+                <p class="text-2xl font-bold text-blue-600" id="total-count">加载中...</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-700">本周新增</h3>
+                <p class="text-2xl font-bold text-green-600" id="recent-count">加载中...</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-700">难度分布</h3>
+                <div id="difficulty-distribution" class="text-sm text-gray-600">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 搜索和筛选 -->
+        <div class="bg-white rounded-lg shadow p-4 mb-6">
+            <div class="flex flex-wrap gap-4">
+                <div class="flex-1">
+                    <input type="text" id="search-input" 
+                           class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="搜索词汇...">
+                </div>
+                <div class="w-48">
+                    <select id="difficulty-filter" 
+                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">所有难度</option>
+                        <option value="C2">C2</option>
+                        <option value="C1">C1</option>
+                        <option value="B2">B2</option>
+                        <option value="B1">B1</option>
+                    </select>
+                </div>
+                <div class="w-48">
+                    <select id="sort-by" 
+                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="created_at">按添加时间</option>
+                        <option value="word">按字母顺序</option>
+                        <option value="frequency">按出现频率</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 词汇列表 -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">词汇</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">词性</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">释义</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">难度</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">频率</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="vocabulary-list">
+                        <!-- 词汇列表将通过JavaScript动态加载 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 分页 -->
+        <div class="mt-4 flex justify-between items-center">
+            <div class="text-sm text-gray-700">
+                显示 <span id="current-range">0-0</span> 条，共 <span id="total-items">0</span> 条
+            </div>
+            <div class="flex gap-2">
+                <button id="prev-page" class="px-4 py-2 border rounded-lg disabled:opacity-50">上一页</button>
+                <button id="next-page" class="px-4 py-2 border rounded-lg disabled:opacity-50">下一页</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 词汇详情模态框 -->
+<div id="vocabulary-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden">
+    <div class="min-h-screen px-4 text-center">
+        <div class="fixed inset-0" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <div class="inline-block align-middle my-8 p-6 w-full max-w-2xl text-left bg-white rounded-lg shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="modal-word"></h3>
+                <button class="text-gray-500 hover:text-gray-700" onclick="closeModal()">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="space-y-4" id="modal-content">
+                <!-- 词汇详情将通过JavaScript动态加载 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 1;
+const pageSize = 20;
+let totalItems = 0;
+
+// 加载词汇列表
+async function loadVocabulary(page = 1) {
+    const search = document.getElementById('search-input').value;
+    const difficulty = document.getElementById('difficulty-filter').value;
+    const sortBy = document.getElementById('sort-by').value;
+    
+    try {
+        const response = await fetch(`/api/vocabulary?page=${page}&limit=${pageSize}&search=${search}&difficulty_level=${difficulty}&sort_by=${sortBy}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderVocabularyList(data.data);
+            totalItems = data.total;
+            updatePagination();
+        }
+    } catch (error) {
+        console.error('加载词汇失败:', error);
+    }
+}
+
+// 渲染词汇列表
+function renderVocabularyList(vocabularies) {
+    const tbody = document.getElementById('vocabulary-list');
+    tbody.innerHTML = '';
+    
+    vocabularies.forEach(vocab => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">${vocab.word}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-500">${vocab.pos || '-'}</div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="text-sm text-gray-900">${vocab.definition_cn || '-'}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                    ${vocab.difficulty_level || '-'}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${vocab.frequency || 1}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button onclick="showVocabularyDetail(${vocab.id})" class="text-blue-600 hover:text-blue-900 mr-3">详情</button>
+                <button onclick="deleteVocabulary(${vocab.id})" class="text-red-600 hover:text-red-900">删除</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// 更新分页信息
+function updatePagination() {
+    const start = (currentPage - 1) * pageSize + 1;
+    const end = Math.min(start + pageSize - 1, totalItems);
+    document.getElementById('current-range').textContent = `${start}-${end}`;
+    document.getElementById('total-items').textContent = totalItems;
+    
+    document.getElementById('prev-page').disabled = currentPage === 1;
+    document.getElementById('next-page').disabled = end >= totalItems;
+}
+
+// 加载统计信息
+async function loadStats() {
+    try {
+        const response = await fetch('/api/vocabulary/stats');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('total-count').textContent = data.data.total_count;
+            document.getElementById('recent-count').textContent = data.data.recent_count;
+            
+            const difficultyHtml = Object.entries(data.data.difficulty_distribution)
+                .map(([level, count]) => `${level}: ${count}`)
+                .join(' | ');
+            document.getElementById('difficulty-distribution').textContent = difficultyHtml;
+        }
+    } catch (error) {
+        console.error('加载统计信息失败:', error);
+    }
+}
+
+// 显示词汇详情
+async function showVocabularyDetail(vocabId) {
+    try {
+        const response = await fetch(`/api/vocabulary/${vocabId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const vocab = data.data;
+            document.getElementById('modal-word').textContent = vocab.word;
+            
+            const content = document.getElementById('modal-content');
+            content.innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600">词性</p>
+                        <p class="font-medium">${vocab.pos || '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">难度等级</p>
+                        <p class="font-medium">${vocab.difficulty_level || '-'}</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-sm text-gray-600">中文释义</p>
+                        <p class="font-medium">${vocab.definition_cn || '-'}</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-sm text-gray-600">英文释义</p>
+                        <p class="font-medium">${vocab.definition_en || '-'}</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-sm text-gray-600">例句</p>
+                        <p class="font-medium">${vocab.example || '-'}</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-sm text-gray-600">来源</p>
+                        <p class="font-medium">${vocab.source_url || '-'}</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('vocabulary-modal').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('加载词汇详情失败:', error);
+    }
+}
+
+// 关闭模态框
+function closeModal() {
+    document.getElementById('vocabulary-modal').classList.add('hidden');
+}
+
+// 删除词汇
+async function deleteVocabulary(vocabId) {
+    if (!confirm('确定要删除这个词汇吗？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/vocabulary/${vocabId}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            loadVocabulary(currentPage);
+            loadStats();
+        }
+    } catch (error) {
+        console.error('删除词汇失败:', error);
+    }
+}
+
+// 事件监听
+document.getElementById('search-input').addEventListener('input', debounce(() => {
+    currentPage = 1;
+    loadVocabulary(currentPage);
+}, 300));
+
+document.getElementById('difficulty-filter').addEventListener('change', () => {
+    currentPage = 1;
+    loadVocabulary(currentPage);
+});
+
+document.getElementById('sort-by').addEventListener('change', () => {
+    currentPage = 1;
+    loadVocabulary(currentPage);
+});
+
+document.getElementById('prev-page').addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        loadVocabulary(currentPage);
+    }
+});
+
+document.getElementById('next-page').addEventListener('click', () => {
+    const maxPage = Math.ceil(totalItems / pageSize);
+    if (currentPage < maxPage) {
+        currentPage++;
+        loadVocabulary(currentPage);
+    }
+});
+
+// 防抖函数
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', () => {
+    loadVocabulary();
+    loadStats();
+});
+</script>
+{% endblock %} 

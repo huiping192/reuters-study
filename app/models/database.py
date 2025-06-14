@@ -12,6 +12,15 @@ def init_db(app):
     """初始化数据库配置"""
     # 设置数据库URL，默认使用SQLite
     database_url = os.getenv('DATABASE_URL', 'sqlite:///vocabulary.db')
+    
+    # 如果使用SQLite，确保数据目录存在
+    if database_url.startswith('sqlite:///'):
+        db_path = database_url.replace('sqlite:///', '')
+        db_dir = os.path.dirname(db_path)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+            print(f"创建数据库目录: {db_dir}")
+    
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
@@ -21,7 +30,7 @@ def init_db(app):
     with app.app_context():
         # 创建所有表
         db.create_all()
-        print("数据库表创建完成")
+        print(f"数据库初始化完成: {database_url}")
 
 def get_db_connection():
     """获取数据库连接"""
