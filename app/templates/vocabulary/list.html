@@ -61,6 +61,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">词汇</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">词性</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">释义</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">例句</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">难度</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">频率</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
@@ -81,28 +82,6 @@
             <div class="flex gap-2">
                 <button id="prev-page" class="px-4 py-2 border rounded-lg disabled:opacity-50">上一页</button>
                 <button id="next-page" class="px-4 py-2 border rounded-lg disabled:opacity-50">下一页</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 词汇详情模态框 -->
-<div id="vocabulary-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-    <div class="min-h-screen px-4 text-center">
-        <div class="fixed inset-0" aria-hidden="true">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div>
-        <div class="inline-block align-middle my-8 p-6 w-full max-w-2xl text-left bg-white rounded-lg shadow-xl relative">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold" id="modal-word"></h3>
-                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 focus:outline-none">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            <div class="space-y-4" id="modal-content">
-                <!-- 词汇详情将通过JavaScript动态加载 -->
             </div>
         </div>
     </div>
@@ -153,6 +132,9 @@ function renderVocabularyList(vocabularies) {
             <td class="px-6 py-4">
                 <div class="text-sm text-gray-900">${vocab.definition_cn || '-'}</div>
             </td>
+            <td class="px-6 py-4">
+                <div class="text-sm text-gray-900 italic">${vocab.example || '-'}</div>
+            </td>
             <td class="px-6 py-4 whitespace-nowrap">
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                     ${vocab.difficulty_level || '-'}
@@ -162,7 +144,7 @@ function renderVocabularyList(vocabularies) {
                 ${vocab.frequency || 1}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button onclick="showVocabularyDetail(${vocab.id})" class="text-blue-600 hover:text-blue-900 mr-3">详情</button>
+                <button onclick="updateVocabulary(${vocab.id})" class="text-green-600 hover:text-green-900 mr-3">更新</button>
                 <button onclick="deleteVocabulary(${vocab.id})" class="text-red-600 hover:text-red-900">删除</button>
             </td>
         `;
@@ -201,80 +183,25 @@ async function loadStats() {
     }
 }
 
-// 显示词汇详情
-async function showVocabularyDetail(vocabId) {
+// 更新词汇信息
+async function updateVocabulary(vocabId) {
     try {
-        const modal = document.getElementById('vocabulary-modal');
-        const content = document.getElementById('modal-content');
-        
-        // 显示加载状态
-        modal.classList.remove('hidden');
-        content.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i></div>';
-        
-        const response = await fetch(`/api/vocabulary/${vocabId}`);
+        const response = await fetch(`/api/vocabulary/${vocabId}/update`, {
+            method: 'POST'
+        });
         const data = await response.json();
         
         if (data.success) {
-            const vocab = data.data;
-            document.getElementById('modal-word').textContent = vocab.word;
-            
-            content.innerHTML = `
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-sm text-gray-600">词性</p>
-                        <p class="font-medium">${vocab.pos || '-'}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-600">难度等级</p>
-                        <p class="font-medium">${vocab.difficulty_level || '-'}</p>
-                    </div>
-                    <div class="col-span-2">
-                        <p class="text-sm text-gray-600">中文释义</p>
-                        <p class="font-medium">${vocab.definition_cn || '-'}</p>
-                    </div>
-                    <div class="col-span-2">
-                        <p class="text-sm text-gray-600">英文释义</p>
-                        <p class="font-medium">${vocab.definition_en || '-'}</p>
-                    </div>
-                    <div class="col-span-2">
-                        <p class="text-sm text-gray-600">例句</p>
-                        <p class="font-medium">${vocab.example || '-'}</p>
-                    </div>
-                    <div class="col-span-2">
-                        <p class="text-sm text-gray-600">来源</p>
-                        <p class="font-medium">${vocab.source_url || '-'}</p>
-                    </div>
-                </div>
-            `;
+            alert('词汇信息已更新！');
+            loadVocabulary(currentPage);
         } else {
-            content.innerHTML = '<div class="text-red-500 text-center py-4">加载失败，请重试</div>';
+            alert('更新失败：' + data.error);
         }
     } catch (error) {
-        console.error('加载词汇详情失败:', error);
-        document.getElementById('modal-content').innerHTML = 
-            '<div class="text-red-500 text-center py-4">加载失败，请重试</div>';
+        console.error('更新词汇失败:', error);
+        alert('更新失败，请重试');
     }
 }
-
-// 关闭模态框
-function closeModal() {
-    const modal = document.getElementById('vocabulary-modal');
-    modal.classList.add('hidden');
-}
-
-// 点击模态框背景关闭
-document.getElementById('vocabulary-modal').addEventListener('click', function(event) {
-    if (event.target === this) {
-        closeModal();
-    }
-});
-
-// 按ESC键关闭模态框
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closeModal();
-    }
-});
 
 // 删除词汇
 async function deleteVocabulary(vocabId) {

@@ -106,3 +106,64 @@ class ArticleProcessor:
             max_tokens=2000,
             stream=False
         )
+
+    def process_word(self, word: str) -> dict:
+        """处理单个单词，获取详细信息"""
+        system_prompt = """作为专业英语教学助手，请分析这个单词并提供以下信息：
+- 词性 (POS)
+- 中文释义
+- 英文释义
+- 例句
+- 难度等级 (CEFR)
+- 发音
+
+输出格式：
+POS: 词性
+DEF_CN: 中文释义
+DEF_EN: 英文释义
+EXAMPLE: 例句
+LEVEL: 难度等级
+PRON: 发音
+"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": word}
+                ],
+                temperature=0.2,
+                max_tokens=1000,
+                stream=False
+            )
+
+            # 解析响应
+            content = response.choices[0].message.content
+            result = {}
+            
+            # 解析每一行
+            for line in content.split('\n'):
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    key = key.strip().lower()
+                    value = value.strip()
+                    
+                    if key == 'pos':
+                        result['pos'] = value
+                    elif key == 'def_cn':
+                        result['definition_cn'] = value
+                    elif key == 'def_en':
+                        result['definition_en'] = value
+                    elif key == 'example':
+                        result['example'] = value
+                    elif key == 'level':
+                        result['difficulty_level'] = value
+                    elif key == 'pron':
+                        result['pronunciation'] = value
+
+            return result
+
+        except Exception as e:
+            print(f"处理单词失败: {str(e)}")
+            return None

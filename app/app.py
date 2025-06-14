@@ -270,6 +270,44 @@ def get_vocabulary_detail(vocab_id):
         }), 500
 
 
+@app.route('/api/vocabulary/<int:vocab_id>/update', methods=['POST'])
+def update_vocabulary_with_ai(vocab_id):
+    """使用AI更新词汇信息"""
+    try:
+        user_id = SessionManager.get_user_id()
+        vocab = VocabularyService.get_vocabulary_detail(vocab_id, user_id)
+        
+        if not vocab:
+            return jsonify({
+                'success': False,
+                'error': '词汇不存在'
+            }), 404
+            
+        # 使用AI更新词汇信息
+        processor = ArticleProcessor()
+        updated_info = processor.process_word(vocab['word'])
+        
+        if not updated_info:
+            return jsonify({
+                'success': False,
+                'error': 'AI更新失败'
+            }), 500
+            
+        # 更新词汇信息
+        result = VocabularyService.update_vocabulary(vocab_id, updated_info)
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/vocabulary/<int:vocab_id>', methods=['DELETE'])
 def delete_vocabulary(vocab_id):
     """删除词汇"""
