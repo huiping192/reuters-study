@@ -5,7 +5,12 @@
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <div class="mb-8">
-        <h1 class="text-3xl font-bold mb-4">我的词汇库</h1>
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-bold">我的词汇库</h1>
+            <button onclick="showAddWordModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-plus mr-2"></i>添加单词
+            </button>
+        </div>
         
         <!-- 统计信息 -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -20,6 +25,38 @@
             <div class="bg-white rounded-lg shadow p-4">
                 <h3 class="text-lg font-semibold text-gray-700">难度分布</h3>
                 <div id="difficulty-distribution" class="text-sm text-gray-600">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 添加单词模态框 -->
+        <div id="add-word-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">添加新单词</h3>
+                    <button onclick="hideAddWordModal()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="add-word-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">单词</label>
+                        <input type="text" id="word-input" name="word" required
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="输入要添加的单词">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">来源URL（可选）</label>
+                        <input type="text" id="source-url-input" name="source_url"
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="输入单词来源URL">
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="hideAddWordModal()"
+                                class="px-4 py-2 border rounded-lg hover:bg-gray-50">取消</button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">添加</button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -273,5 +310,91 @@ document.addEventListener('DOMContentLoaded', () => {
     loadVocabulary();
     loadStats();
 });
+
+// 显示添加单词模态框
+function showAddWordModal() {
+    document.getElementById('add-word-modal').classList.remove('hidden');
+}
+
+// 隐藏添加单词模态框
+function hideAddWordModal() {
+    document.getElementById('add-word-modal').classList.add('hidden');
+    document.getElementById('add-word-form').reset();
+}
+
+// 处理添加单词表单提交
+document.getElementById('add-word-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const word = document.getElementById('word-input').value.trim();
+    const sourceUrl = document.getElementById('source-url-input').value.trim();
+    
+    if (!word) {
+        alert('请输入单词');
+        return;
+    }
+    
+    try {
+        // 第一步：添加单词
+        const addResponse = await fetch('/api/vocabulary', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                word: word,
+                source_url: sourceUrl || undefined
+            })
+        });
+        
+        const addData = await addResponse.json();
+        
+        if (addData.success) {
+            // 显示添加成功提示
+            alert('单词添加成功！正在后台更新详细信息...');
+            hideAddWordModal();
+            loadVocabulary(currentPage);
+            loadStats();
+            
+            // 异步更新单词信息
+            updateVocabularyInBackground(addData.data.id);
+        } else {
+            alert('添加失败：' + addData.error);
+        }
+    } catch (error) {
+        console.error('添加单词失败:', error);
+        alert('添加失败，请重试');
+    }
+});
+
+// 后台异步更新单词信息
+async function updateVocabularyInBackground(vocabId) {
+    try {
+        const updateResponse = await fetch(`/api/vocabulary/${vocabId}/update`, {
+            method: 'POST'
+        });
+        
+        const updateData = await updateResponse.json();
+        
+        if (updateData.success) {
+            // 更新成功后刷新列表
+            loadVocabulary(currentPage);
+            // 可以添加一个小的提示，告诉用户更新完成
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg';
+            toast.textContent = '单词详细信息已更新完成！';
+            document.body.appendChild(toast);
+            
+            // 3秒后自动移除提示
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        } else {
+            console.error('自动更新失败:', updateData.error);
+        }
+    } catch (error) {
+        console.error('自动更新失败:', error);
+    }
+}
 </script>
 {% endblock %} 
