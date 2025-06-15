@@ -1,6 +1,7 @@
 import requests
 from flask import Flask, render_template
 from flask import request, jsonify
+from flask_migrate import Migrate
 
 from audio_manager import generate_audio
 from news_analytics import ArticleProcessor
@@ -10,7 +11,7 @@ from flask import send_from_directory
 import os
 
 # 导入新增的模块
-from models.database import init_db
+from models.database import init_db, db
 from utils.session_manager import SessionManager
 from services.vocabulary_service import VocabularyService
 
@@ -21,6 +22,9 @@ SessionManager.set_session_config(app)
 
 # 初始化数据库
 init_db(app)
+
+# 初始化 Flask-Migrate
+migrate = Migrate(app, db)
 
 # 配置音频存储路径
 TTS_DIR = os.path.join(app.static_folder, 'tts')
