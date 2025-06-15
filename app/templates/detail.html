@@ -160,34 +160,53 @@
     }
 }
 
-    // 修改后的TTS处理函数
-async function handleTTS(index, event) {  // 添加event参数
-    const button = event.currentTarget  // 直接获取触发按钮
-    const paragraph = document.querySelector(`[data-index="${index}"] p`).innerText
+    // 处理TTS
+    async function handleTTS(index, event) {
+        const button = event.currentTarget;
+        const paragraph = document.querySelector(`[data-index="${index}"] p`).innerText;
 
-    try {
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'
-        button.disabled = true
+        try {
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            button.disabled = true;
 
-        const response = await postData('/tts', {
-            text: paragraph,
-            index: index
-        })
+            console.log('发送TTS请求:', {
+                text: paragraph.substring(0, 50) + '...',  // 只打印前50个字符
+                index: index
+            });
 
-        if (response.success) {
-            const audio = new Audio(response.audio_url)
-            audio.play().catch(error => {
-                console.error('播放失败:', error)
-                button.innerHTML = '<i class="fas fa-volume-up fa-sm"></i>'
-            })
+            const response = await fetch('/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: paragraph,
+                    index: index
+                })
+            });
+
+            const data = await response.json();
+            console.log('TTS响应:', data);
+
+            if (!response.ok) {
+                throw new Error(data.error || 'TTS请求失败');
+            }
+
+            if (data.success) {
+                const audio = new Audio(data.audio_url);
+                audio.play().catch(error => {
+                    console.error('音频播放失败:', error);
+                    button.innerHTML = '<i class="fas fa-volume-up fa-sm"></i>';
+                });
+            } else {
+                throw new Error(data.error || 'TTS生成失败');
+            }
+        } catch (error) {
+            console.error('TTS错误:', error);
+            alert('语音生成失败: ' + error.message);
+        } finally {
+            button.innerHTML = '<i class="fas fa-volume-up fa-sm"></i>';
+            button.disabled = false;
         }
-    } catch (error) {
-        console.error('请求失败:', error)
-    } finally {
-        button.innerHTML = '<i class="fas fa-volume-up fa-sm"></i>'
-        button.disabled = false
     }
-}
 </script>
 </body>
 </html>
