@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}我的词汇库{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-bold">我的词汇库</h1>
+            <button onclick="showAddWordModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-plus mr-2"></i>添加单词
+            </button>
+        </div>
+        
+        <!-- 统计信息 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-700">总词汇量</h3>
+                <p class="text-2xl font-bold text-blue-600" id="total-count">加载中...</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-700">本周新增</h3>
+                <p class="text-2xl font-bold text-green-600" id="recent-count">加载中...</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-700">难度分布</h3>
+                <div id="difficulty-distribution" class="text-sm text-gray-600">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 添加单词模态框 -->
+        <div id="add-word-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">添加新单词</h3>
+                    <button onclick="hideAddWordModal()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="add-word-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">单词</label>
+                        <input type="text" id="word-input" name="word" required
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="输入要添加的单词">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">来源URL（可选）</label>
+                        <input type="text" id="source-url-input" name="source_url"
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="输入单词来源URL">
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="hideAddWordModal()"
+                                class="px-4 py-2 border rounded-lg hover:bg-gray-50">取消</button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 搜索和筛选 -->
+        <div class="bg-white rounded-lg shadow p-4 mb-6">
+            <div class="flex flex-wrap gap-4">
+                <div class="flex-1">
+                    <input type="text" id="search-input" 
+                           class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="搜索词汇...">
+                </div>
+                <div class="w-48">
+                    <select id="difficulty-filter" 
+                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">所有难度</option>
+                        <option value="C2">C2</option>
+                        <option value="C1">C1</option>
+                        <option value="B2">B2</option>
+                        <option value="B1">B1</option>
+                    </select>
+                </div>
+                <div class="w-48">
+                    <select id="sort-by" 
+                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="created_at">按添加时间</option>
+                        <option value="word">按字母顺序</option>
+                        <option value="frequency">按出现频率</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 词汇列表 -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">词汇</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">词性</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">释义</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">例句</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">难度</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">频率</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="vocabulary-list">
+                        <!-- 词汇列表将通过JavaScript动态加载 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 分页 -->
+        <div class="mt-4 flex justify-between items-center">
+            <div class="text-sm text-gray-700">
+                显示 <span id="current-range">0-0</span> 条，共 <span id="total-items">0</span> 条
+            </div>
+            <div class="flex gap-2">
+                <button id="prev-page" class="px-4 py-2 border rounded-lg disabled:opacity-50">上一页</button>
+                <button id="next-page" class="px-4 py-2 border rounded-lg disabled:opacity-50">下一页</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 1;
+const pageSize = 20;
+let totalItems = 0;
+
+// 加载词汇列表
+async function loadVocabulary(page = 1) {
+    const search = document.getElementById('search-input').value;
+    const difficulty = document.getElementById('difficulty-filter').value;
+    const sortBy = document.getElementById('sort-by').value;
+    
+    try {
+        const response = await fetch(`/api/vocabulary?page=${page}&limit=${pageSize}&search=${search}&difficulty_level=${difficulty}&sort_by=${sortBy}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderVocabularyList(data.data);
+            totalItems = data.total;
+            updatePagination();
+        }
+    } catch (error) {
+        console.error('加载词汇失败:', error);
+    }
+}
+
+// 渲染词汇列表
+function renderVocabularyList(vocabularies) {
+    const tbody = document.getElementById('vocabulary-list');
+    tbody.innerHTML = '';
+    
+    vocabularies.forEach(vocab => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">${vocab.word}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-500">${vocab.pos || '-'}</div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="text-sm text-gray-900">${vocab.definition_cn || '-'}</div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="text-sm text-gray-900 italic">${vocab.example || '-'}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                    ${vocab.difficulty_level || '-'}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${vocab.frequency || 1}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button onclick="updateVocabulary(${vocab.id})" class="text-green-600 hover:text-green-900 mr-3">更新</button>
+                <button onclick="deleteVocabulary(${vocab.id})" class="text-red-600 hover:text-red-900">删除</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// 更新分页信息
+function updatePagination() {
+    const start = (currentPage - 1) * pageSize + 1;
+    const end = Math.min(start + pageSize - 1, totalItems);
+    document.getElementById('current-range').textContent = `${start}-${end}`;
+    document.getElementById('total-items').textContent = totalItems;
+    
+    document.getElementById('prev-page').disabled = currentPage === 1;
+    document.getElementById('next-page').disabled = end >= totalItems;
+}
+
+// 加载统计信息
+async function loadStats() {
+    try {
+        const response = await fetch('/api/vocabulary/stats');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('total-count').textContent = data.data.total_count;
+            document.getElementById('recent-count').textContent = data.data.recent_count;
+            
+            const difficultyHtml = Object.entries(data.data.difficulty_distribution)
+                .map(([level, count]) => `${level}: ${count}`)
+                .join(' | ');
+            document.getElementById('difficulty-distribution').textContent = difficultyHtml;
+        }
+    } catch (error) {
+        console.error('加载统计信息失败:', error);
+    }
+}
+
+// 更新词汇信息
+async function updateVocabulary(vocabId) {
+    try {
+        const response = await fetch(`/api/vocabulary/${vocabId}/update`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('词汇信息已更新！');
+            loadVocabulary(currentPage);
+        } else {
+            alert('更新失败：' + data.error);
+        }
+    } catch (error) {
+        console.error('更新词汇失败:', error);
+        alert('更新失败，请重试');
+    }
+}
+
+// 删除词汇
+async function deleteVocabulary(vocabId) {
+    if (!confirm('确定要删除这个词汇吗？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/vocabulary/${vocabId}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            loadVocabulary(currentPage);
+            loadStats();
+        }
+    } catch (error) {
+        console.error('删除词汇失败:', error);
+    }
+}
+
+// 事件监听
+document.getElementById('search-input').addEventListener('input', debounce(() => {
+    currentPage = 1;
+    loadVocabulary(currentPage);
+}, 300));
+
+document.getElementById('difficulty-filter').addEventListener('change', () => {
+    currentPage = 1;
+    loadVocabulary(currentPage);
+});
+
+document.getElementById('sort-by').addEventListener('change', () => {
+    currentPage = 1;
+    loadVocabulary(currentPage);
+});
+
+document.getElementById('prev-page').addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        loadVocabulary(currentPage);
+    }
+});
+
+document.getElementById('next-page').addEventListener('click', () => {
+    const maxPage = Math.ceil(totalItems / pageSize);
+    if (currentPage < maxPage) {
+        currentPage++;
+        loadVocabulary(currentPage);
+    }
+});
+
+// 防抖函数
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', () => {
+    loadVocabulary();
+    loadStats();
+});
+
+// 显示添加单词模态框
+function showAddWordModal() {
+    document.getElementById('add-word-modal').classList.remove('hidden');
+}
+
+// 隐藏添加单词模态框
+function hideAddWordModal() {
+    document.getElementById('add-word-modal').classList.add('hidden');
+    document.getElementById('add-word-form').reset();
+}
+
+// 处理添加单词表单提交
+document.getElementById('add-word-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const word = document.getElementById('word-input').value.trim();
+    const sourceUrl = document.getElementById('source-url-input').value.trim();
+    
+    if (!word) {
+        alert('请输入单词');
+        return;
+    }
+    
+    try {
+        // 第一步：添加单词
+        const addResponse = await fetch('/api/vocabulary', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                word: word,
+                source_url: sourceUrl || undefined
+            })
+        });
+        
+        const addData = await addResponse.json();
+        
+        if (addData.success) {
+            // 显示添加成功提示
+            alert('单词添加成功！正在后台更新详细信息...');
+            hideAddWordModal();
+            loadVocabulary(currentPage);
+            loadStats();
+            
+            // 异步更新单词信息
+            updateVocabularyInBackground(addData.data.id);
+        } else {
+            alert('添加失败：' + addData.error);
+        }
+    } catch (error) {
+        console.error('添加单词失败:', error);
+        alert('添加失败，请重试');
+    }
+});
+
+// 后台异步更新单词信息
+async function updateVocabularyInBackground(vocabId) {
+    try {
+        const updateResponse = await fetch(`/api/vocabulary/${vocabId}/update`, {
+            method: 'POST'
+        });
+        
+        const updateData = await updateResponse.json();
+        
+        if (updateData.success) {
+            // 更新成功后刷新列表
+            loadVocabulary(currentPage);
+            // 可以添加一个小的提示，告诉用户更新完成
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg';
+            toast.textContent = '单词详细信息已更新完成！';
+            document.body.appendChild(toast);
+            
+            // 3秒后自动移除提示
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        } else {
+            console.error('自动更新失败:', updateData.error);
+        }
+    } catch (error) {
+        console.error('自动更新失败:', error);
+    }
+}
+</script>
+{% endblock %} 

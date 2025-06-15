@@ -1,17 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <!-- 使用Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <title>News List</title>
-</head>
-<body class="bg-gray-50">
+{% extends "base.html" %}
+
+{% block title %}Daily News{% endblock %}
+
+{% block content %}
 <div class="max-w-4xl mx-auto py-8">
     <h1 class="text-3xl font-bold mb-8 text-gray-800">Daily News</h1>
 
     <!-- 新闻列表 -->
-    <!-- 修改新闻项链接部分 -->
     <div class="space-y-4">
         {% for main_cat, sub_cats in news.items() %}
         <div class="mb-8">
@@ -44,5 +39,4 @@
         {% endfor %}
     </div>
 </div>
-</body>
-</html>
+{% endblock %}

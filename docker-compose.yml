@@ -1,12 +1,12 @@
 version: '3.8'
 services:
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  app:
+    build: .
     ports:
-      - "8000:5000"
-    environment:
-      - FLASK_APP=app.py
+      - "5000:5000"
     volumes:
-      - ./app:/app
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///data/vocabulary.db
+      - FLASK_ENV=production
+    restart: unless-stopped
