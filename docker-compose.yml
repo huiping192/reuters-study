@@ -3,10 +3,11 @@ services:
   app:
     build: .
     ports:
-      - "5000:5000"
+      - "8007:5000"
     volumes:
       - ./data:/app/data
     environment:
-      - DATABASE_URL=sqlite:///data/vocabulary.db
+      - DATABASE_URL=sqlite:////app/data/vocabulary.db
       - FLASK_ENV=production
+    user: "${UID:-1000}:${GID:-1000}"
     restart: unless-stopped
