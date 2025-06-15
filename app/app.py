@@ -14,6 +14,7 @@ import os
 from models.database import init_db, db
 from utils.session_manager import SessionManager
 from services.vocabulary_service import VocabularyService
+from models.learning_record import LearningRecord
 
 app = Flask(__name__)
 
@@ -334,6 +335,85 @@ def delete_vocabulary(vocab_id):
 def vocabulary_list():
     """词汇库页面"""
     return render_template('vocabulary/list.html')
+
+
+@app.route('/vocabulary/learn')
+def vocabulary_learn():
+    """单词学习页面"""
+    return render_template('vocabulary/learn.html')
+
+
+@app.route('/api/vocabulary/learn/start', methods=['GET'])
+def start_learning_session():
+    """开始学习会话"""
+    try:
+        user_id = SessionManager.get_user_id()
+        
+        # 获取用户词汇库中的单词
+        vocabularies = VocabularyService.get_user_vocabulary(
+            user_id=user_id,
+            filters={
+                'limit': 10  # 每次最多学习10个单词
+            }
+        )
+        
+        if not vocabularies:
+            return jsonify({
+                'success': False,
+                'error': '词汇库为空，请先添加单词'
+            }), 404
+            
+        if len(vocabularies) < 4:
+            return jsonify({
+                'success': False,
+                'error': f'词汇数量不足，当前只有{len(vocabularies)}个单词，至少需要4个单词才能开始学习'
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'words': vocabularies
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/vocabulary/learn/record', methods=['POST'])
+def record_learning_result():
+    """记录学习结果"""
+    try:
+        user_id = SessionManager.get_user_id()
+        data = request.get_json()
+        
+        if not data or 'vocabulary_id' not in data:
+            return jsonify({
+                'success': False,
+                'error': '缺少必要参数'
+            }), 400
+        
+        # 记录学习行为
+        LearningRecord.record_action(
+            user_id=user_id,
+            vocabulary_id=data['vocabulary_id'],
+            action_type='test',
+            is_correct=data.get('is_correct'),
+            response_time=data.get('response_time')
+        )
+        
+        return jsonify({
+            'success': True
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 if __name__ == '__main__':

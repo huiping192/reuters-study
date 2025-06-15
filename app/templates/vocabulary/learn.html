@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单词学习</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- 顶部导航 -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-800">单词学习</h1>
+            <div class="flex items-center space-x-4">
+                <span id="timer" class="text-lg font-semibold text-gray-600">10:00</span>
+                <button onclick="window.location.href='/vocabulary'" 
+                        class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                    返回词汇库
+                </button>
+            </div>
+        </div>
+
+        <!-- 学习进度 -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-800">学习进度</h2>
+                    <p class="text-gray-600">已完成 <span id="completed-count">0</span> / <span id="total-count">0</span> 题</p>
+                </div>
+                <div class="w-64">
+                    <div class="h-2 bg-gray-200 rounded-full">
+                        <div id="progress-bar" class="h-2 bg-blue-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 学习卡片 -->
+        <div id="learning-card" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
+            <div class="text-center mb-8">
+                <h2 id="word" class="text-3xl font-bold text-gray-800 mb-4"></h2>
+                <p id="pos" class="text-gray-600 text-lg"></p>
+            </div>
+            
+            <div class="space-y-4">
+                <div id="question-container" class="mb-8">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">选择正确的释义：</h3>
+                    <div id="options" class="grid grid-cols-1 gap-4">
+                        <!-- 选项将通过JavaScript动态添加 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 词汇不足提示 -->
+        <div id="insufficient-words-card" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
+            <div class="text-center">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">词汇数量不足</h2>
+                <p class="text-gray-600 mb-6">当前词汇库中的单词数量不足，请先添加更多单词。</p>
+                <p class="text-gray-500 mb-6">每次学习需要至少4个单词，最多10个单词。</p>
+                <div class="flex justify-center space-x-4">
+                    <a href="/vocabulary" 
+                       class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        返回词汇库
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结果统计 -->
+        <div id="result-card" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">学习完成！</h2>
+                <div class="flex justify-center space-x-8">
+                    <div class="text-center">
+                        <p class="text-gray-600">正确率</p>
+                        <p id="accuracy" class="text-2xl font-bold text-green-600">0%</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-gray-600">用时</p>
+                        <p id="time-used" class="text-2xl font-bold text-blue-600">0:00</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <button onclick="startNewSession()" 
+                        class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                    再来一次
+                </button>
+                <button onclick="window.location.href='/vocabulary'" 
+                        class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                    返回词汇库
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSession = {
+            words: [],
+            currentIndex: 0,
+            correctCount: 0,
+            startTime: null,
+            timer: null
+        };
+
+        // 初始化学习会话
+        async function initSession() {
+            try {
+                const response = await fetch('/api/vocabulary/learn/start');
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.data.words.length < 4) {
+                        // 如果单词数量少于4个，显示提示信息
+                        document.getElementById('learning-card').classList.add('hidden');
+                        document.getElementById('insufficient-words-card').classList.remove('hidden');
+                        return;
+                    }
+                    
+                    currentSession.words = data.data.words;
+                    currentSession.currentIndex = 0;
+                    currentSession.correctCount = 0;
+                    currentSession.startTime = new Date();
+                    
+                    document.getElementById('total-count').textContent = currentSession.words.length;
+                    document.getElementById('completed-count').textContent = '0';
+                    document.getElementById('progress-bar').style.width = '0%';
+                    
+                    showCurrentWord();
+                    startTimer();
+                } else {
+                    // 显示错误信息
+                    document.getElementById('learning-card').classList.add('hidden');
+                    document.getElementById('insufficient-words-card').classList.remove('hidden');
+                    document.querySelector('#insufficient-words-card p').textContent = data.error || '获取单词失败，请稍后重试';
+                }
+            } catch (error) {
+                console.error('初始化学习会话失败:', error);
+                document.getElementById('learning-card').classList.add('hidden');
+                document.getElementById('insufficient-words-card').classList.remove('hidden');
+                document.querySelector('#insufficient-words-card p').textContent = '系统错误，请稍后重试';
+            }
+        }
+
+        // 显示当前单词
+        function showCurrentWord() {
+            const word = currentSession.words[currentSession.currentIndex];
+            document.getElementById('word').textContent = word.word;
+            document.getElementById('pos').textContent = word.pos || '';
+            
+            // 生成选项
+            const options = generateOptions(word);
+            const optionsContainer = document.getElementById('options');
+            optionsContainer.innerHTML = '';
+            
+            options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'w-full p-4 text-left border rounded-lg hover:bg-gray-50 transition-colors';
+                button.textContent = option;
+                button.onclick = () => checkAnswer(option === word.definition_cn);
+                optionsContainer.appendChild(button);
+            });
+            
+            document.getElementById('learning-card').classList.remove('hidden');
+        }
+
+        // 生成选项
+        function generateOptions(currentWord) {
+            const options = [currentWord.definition_cn];
+            const otherWords = currentSession.words.filter(w => w.id !== currentWord.id);
+            
+            // 随机选择3个其他单词的释义
+            while (options.length < 4 && otherWords.length > 0) {
+                const randomIndex = Math.floor(Math.random() * otherWords.length);
+                const randomWord = otherWords[randomIndex];
+                if (!options.includes(randomWord.definition_cn)) {
+                    options.push(randomWord.definition_cn);
+                }
+                otherWords.splice(randomIndex, 1);
+            }
+            
+            // 随机打乱选项顺序
+            return options.sort(() => Math.random() - 0.5);
+        }
+
+        // 检查答案
+        async function checkAnswer(isCorrect) {
+            const word = currentSession.words[currentSession.currentIndex];
+            
+            try {
+                // 记录学习结果
+                await fetch('/api/vocabulary/learn/record', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        vocabulary_id: word.id,
+                        is_correct: isCorrect,
+                        response_time: new Date() - currentSession.startTime
+                    })
+                });
+                
+                if (isCorrect) {
+                    currentSession.correctCount++;
+                }
+                
+                // 更新进度
+                currentSession.currentIndex++;
+                document.getElementById('completed-count').textContent = currentSession.currentIndex;
+                const progress = (currentSession.currentIndex / currentSession.words.length) * 100;
+                document.getElementById('progress-bar').style.width = `${progress}%`;
+                
+                // 检查是否完成
+                if (currentSession.currentIndex >= currentSession.words.length) {
+                    showResults();
+                } else {
+                    showCurrentWord();
+                }
+            } catch (error) {
+                console.error('记录学习结果失败:', error);
+            }
+        }
+
+        // 显示学习结果
+        function showResults() {
+            clearInterval(currentSession.timer);
+            document.getElementById('learning-card').classList.add('hidden');
+            document.getElementById('result-card').classList.remove('hidden');
+            
+            const accuracy = (currentSession.correctCount / currentSession.words.length) * 100;
+            document.getElementById('accuracy').textContent = `${accuracy.toFixed(1)}%`;
+            
+            const timeUsed = Math.floor((new Date() - currentSession.startTime) / 1000);
+            const minutes = Math.floor(timeUsed / 60);
+            const seconds = timeUsed % 60;
+            document.getElementById('time-used').textContent = 
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // 开始新会话
+        function startNewSession() {
+            document.getElementById('result-card').classList.add('hidden');
+            initSession();
+        }
+
+        // 计时器
+        function startTimer() {
+            let timeLeft = 600; // 10分钟
+            updateTimerDisplay(timeLeft);
+            
+            currentSession.timer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay(timeLeft);
+                
+                if (timeLeft <= 0) {
+                    clearInterval(currentSession.timer);
+                    showResults();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            document.getElementById('timer').textContent = 
+                `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initSession);
+    </script>
+</body>
+</html> 
