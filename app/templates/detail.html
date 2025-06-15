@@ -1,157 +1,193 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 添加Font Awesome图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>{{ article.title }}</title>
+</head>
+<body class="bg-gray-50">
+<div class="max-w-4xl mx-auto py-8 px-4">
+    <a href="/" class="mb-6 inline-block text-blue-600 hover:text-blue-800">
+        ← Back to List
+    </a>
 
-{% block title %}{{ article.title }}{% endblock %}
-
-{% block head %}
-<style>
-    .word-highlight {
-        background-color: #fef3c7;
-        cursor: pointer;
-        padding: 0 2px;
-        border-radius: 2px;
-    }
-    .word-highlight:hover {
-        background-color: #fde68a;
-    }
-    .word-highlight.selected {
-        background-color: #fbbf24;
-    }
-    .word-tooltip {
-        position: fixed;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 4px;
-        padding: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        z-index: 1000;
-        display: none;
-    }
-    .word-tooltip button {
-        margin: 4px;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 14px;
-    }
-    .word-tooltip button.add {
-        background-color: #3b82f6;
-        color: white;
-    }
-    .word-tooltip button.cancel {
-        background-color: #e5e7eb;
-        color: #374151;
-    }
-    .article-content {
-        font-size: 18px;
-        line-height: 1.8;
-        color: #1f2937;
-    }
-    .article-content p {
-        margin-bottom: 1.5em;
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-4xl mx-auto">
-        <!-- 返回按钮 -->
-        <a href="/" class="inline-block mb-6 text-blue-600 hover:text-blue-800">
-            <i class="fas fa-arrow-left mr-2"></i>返回列表
-        </a>
-        
-        <!-- 文章标题和链接 -->
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold mb-4">{{ article.title }}</h1>
-            <a href="{{ article.url }}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm">
-                <i class="fas fa-external-link-alt mr-1"></i>{{ article.url }}
+    <article class="bg-white p-8 rounded-lg shadow-sm">
+        <header class="mb-6 border-b pb-4">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ article.title }}</h1>
+            <a href="{{ article.url }}" target="_blank"
+               class="text-blue-600 hover:text-blue-800 text-sm">
+                {{ article.url }}
             </a>
-        </div>
+        </header>
 
-        <!-- 文章内容 -->
-        <div class="article-content" id="article-content">
+        <!-- 段落显示区域 -->
+        <div class="space-y-6">
+            {% if article.paragraphs %}
             {% for paragraph in article.paragraphs %}
-            <p>{{ paragraph }}</p>
+            <div class="paragraph-group" data-index="{{ loop.index0 }}">
+                <div class="flex justify-between items-start group">
+                    <p class="text-gray-800 flex-1">{{ paragraph }}</p>
+                    <!-- 操作按钮 -->
+                    <div class="ml-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition">
+                        <button onclick="handleTranslate({{ loop.index0 }})"
+                                class="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50">
+                            <i class="fas fa-language fa-sm"></i>
+                        </button>
+                        <button onclick="handleTTS({{ loop.index0 }}, event)"
+                                class="tts-button text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-50"
+                                data-index="{{ loop.index0 }}">
+                            <i class="fas fa-volume-up fa-sm"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- 翻译结果 -->
+                <div id="translation-{{ loop.index0 }}"
+                     class="mt-2 text-gray-600 bg-yellow-50 p-3 rounded hidden"></div>
+            </div>
             {% endfor %}
+            {% else %}
+            <div class="text-red-500 p-4 bg-red-50 rounded">
+                Article content not available
+            </div>
+            {% endif %}
         </div>
-    </div>
+    </article>
 </div>
 
-<div id="word-tooltip" class="word-tooltip">
-    <div class="font-medium mb-2" id="tooltip-word"></div>
-    <div class="flex space-x-2">
-        <button class="add" onclick="addToVocabulary()">添加到生词本</button>
-        <button class="cancel" onclick="hideTooltip()">取消</button>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
+<!-- 异步处理脚本 -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    let selectedWord = '';
-    let tooltip = document.getElementById('word-tooltip');
-    let articleContent = document.getElementById('article-content');
+    async function postData(url, data) {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        return await response.json();
+    }
 
-    // 处理双击事件
-    articleContent.addEventListener('dblclick', function(e) {
-        const selection = window.getSelection();
-        const word = selection.toString().trim();
-        
-        if (word && /^[a-zA-Z]+$/.test(word)) {
-            selectedWord = word;
-            showTooltip(e.pageX, e.pageY);
+    // 处理翻译
+    async function handleTranslate(index) {
+    const paragraph = document.querySelector(`[data-index="${index}"] p`).innerText;
+    const translationDiv = document.getElementById(`translation-${index}`);
+
+    try {
+        // 显示加载状态
+        translationDiv.innerHTML = '<div class="text-blue-500">Translating...</div>';
+        translationDiv.classList.remove('hidden');
+
+        // 发送请求
+        const response = await fetch('/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: paragraph, index })
+        });
+
+        // 处理响应
+        const result = await response.json();
+        console.log('Translation API Response:', result);  // 调试日志
+
+        if (result.error) {
+            throw new Error(result.error);
         }
+
+        if (!result.translation) {
+            throw new Error('Received empty translation');
+        }
+
+        // 显示结果
+        // 清空原有内容
+        translationDiv.innerHTML = '';
+
+    // 创建词汇列表
+    const list = document.createElement('ul');
+    list.style.listStyleType = 'none';
+    list.style.padding = '0';
+    list.style.marginBottom = '2rem';
+
+    // 遍历词汇数据
+    result.translation.vocabulary.forEach((vocab, index) => {
+    const li = document.createElement('li');
+    // 减少间距设置
+    li.style.marginBottom = '0.5rem';
+    li.style.padding = '0.75rem';
+    li.style.backgroundColor = '#f8f9fa';
+    li.style.borderRadius = '6px';
+
+    li.innerHTML = `
+        <div style="color: #2c3e50; font-weight: 600; display: flex; align-items: baseline;">
+            <span style="font-size: 1.1em; margin-right: 8px;">${vocab.word}</span>
+            <span style="color: #e74c3c; margin: 0 4px;">｜</span>
+            <span style="color: #3498db; font-size: 0.9em;">${vocab.pos}</span>
+        </div>
+        <div style="margin-top: 0.25rem; color: #34495e; font-size: 0.95em;">
+            <strong style="margin-right: 6px;">释义：</strong>${vocab.def_cn}
+        </div>
+        <div style="margin-top: 0.25rem; color: #7f8c8d; font-size: 0.9em; line-height: 0.8;">
+            <strong style="margin-right: 6px;">例句：</strong><em>${vocab.example}</em>
+        </div>
+    `;
+    list.appendChild(li);
     });
 
-    // 显示工具提示
-    window.showTooltip = function(x, y) {
-        tooltip.style.display = 'block';
-        tooltip.style.left = x + 'px';
-        tooltip.style.top = y + 'px';
-        document.getElementById('tooltip-word').textContent = selectedWord;
-    };
+    translationDiv.appendChild(list);
 
-    // 隐藏工具提示
-    window.hideTooltip = function() {
-        tooltip.style.display = 'none';
-        selectedWord = '';
-    };
+    // 添加中文翻译
+    const translation = document.createElement('div');
+    translation.style.padding = '0.8rem';
+    translation.style.backgroundColor = '#ecf0f1';
+    translation.style.borderRadius = '4px';
+    translation.innerHTML = `
+        <div style="color: #27ae60; font-weight: 600; margin-bottom: 0.3rem;">
+            中文翻译：
+        </div>
+        <div style="color: #2c3e50; line-height: 1;">
+            ${result.translation.translation}
+        </div>
+    `;
+    translationDiv.appendChild(translation);
 
-    // 添加到生词本
-    window.addToVocabulary = async function() {
-        try {
-            const response = await fetch('/api/vocabulary', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    word: selectedWord,
-                    source_url: window.location.href
-                })
-            });
+    } catch (error) {
+        console.error('Translation Failed:', error);
+        translationDiv.innerHTML = `
+            <div class="text-red-500">
+                Translation Error: ${error.message}
+            </div>
+        `;
+    }
+}
 
-            const data = await response.json();
-            
-            if (data.success) {
-                alert('已添加到生词本！');
-            } else {
-                alert('添加失败：' + data.error);
-            }
-        } catch (error) {
-            console.error('添加生词失败:', error);
-            alert('添加失败，请重试');
+    // 修改后的TTS处理函数
+async function handleTTS(index, event) {  // 添加event参数
+    const button = event.currentTarget  // 直接获取触发按钮
+    const paragraph = document.querySelector(`[data-index="${index}"] p`).innerText
+
+    try {
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'
+        button.disabled = true
+
+        const response = await postData('/tts', {
+            text: paragraph,
+            index: index
+        })
+
+        if (response.success) {
+            const audio = new Audio(response.audio_url)
+            audio.play().catch(error => {
+                console.error('播放失败:', error)
+                button.innerHTML = '<i class="fas fa-volume-up fa-sm"></i>'
+            })
         }
-        
-        hideTooltip();
-    };
-
-    // 点击其他地方时隐藏工具提示
-    document.addEventListener('click', function(e) {
-        if (!tooltip.contains(e.target)) {
-            hideTooltip();
-        }
-    });
-});
+    } catch (error) {
+        console.error('请求失败:', error)
+    } finally {
+        button.innerHTML = '<i class="fas fa-volume-up fa-sm"></i>'
+        button.disabled = false
+    }
+}
 </script>
-{% endblock %}
+</body>
+</html>
