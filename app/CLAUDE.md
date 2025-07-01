@@ -38,6 +38,9 @@ docker-compose up -d
 
 ### 数据库操作
 ```bash
+# 初始化数据库（首次部署）
+python init_db.py
+
 # 初始化数据库迁移
 flask db init
 
@@ -50,6 +53,21 @@ flask db upgrade
 # 降级数据库
 flask db downgrade
 ```
+
+### 服务器部署注意事项
+```bash
+# 服务器首次部署或更新代码后
+git pull origin main
+pip install -r requirements.txt
+
+# 初始化数据库（如果 data/vocabulary.db 不存在）
+python init_db.py
+
+# 启动应用
+python app.py
+```
+
+**重要**: 数据库文件 `data/vocabulary.db` 已被添加到 `.gitignore` 中，不会被版本控制。服务器上的数据库文件会保持独立，避免每次部署时的数据冲突。
 
 ## 架构设计
 
