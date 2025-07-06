@@ -29,8 +29,7 @@ db.init_app(app)
 # 初始化 Flask-Migrate
 migrate = Migrate(app, db)
 
-# 然后初始化数据库（包括自动migration）
-init_db(app)
+# 数据库已在启动脚本中初始化，这里不需要再次执行
 
 # 配置音频存储路径
 TTS_DIR = os.path.join(app.static_folder, 'tts')
