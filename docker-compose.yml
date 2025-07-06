@@ -9,5 +9,5 @@ services:
     environment:
       - DATABASE_URL=sqlite:////app/data/vocabulary.db
       - FLASK_ENV=production
-    user: "${UID:-1000}:${GID:-1000}"
+    # user: "${UID:-1000}:${GID:-1000}"  # 移除用户限制以避免权限问题
     restart: unless-stopped
