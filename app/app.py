@@ -21,11 +21,16 @@ app = Flask(__name__)
 # 配置session（简化版）
 SessionManager.set_session_config(app)
 
-# 初始化数据库
-init_db(app)
+# 首先配置数据库连接但不创建表
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///data/vocabulary.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
 
 # 初始化 Flask-Migrate
 migrate = Migrate(app, db)
+
+# 然后初始化数据库（包括自动migration）
+init_db(app)
 
 # 配置音频存储路径
 TTS_DIR = os.path.join(app.static_folder, 'tts')
