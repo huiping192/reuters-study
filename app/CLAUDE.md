@@ -41,18 +41,24 @@ docker-compose up -d
 # 初始化数据库（首次部署）
 python init_db.py
 
-# 初始化数据库迁移
+# 初始化数据库迁移（仅首次）
 flask db init
 
-# 创建迁移文件
-flask db migrate -m "migration message"
+# 创建迁移文件（从app目录运行）
+cd app
+FLASK_APP=app.py flask db migrate -m "migration message"
 
 # 应用迁移
-flask db upgrade
+FLASK_APP=app.py flask db upgrade
+
+# 查看当前迁移版本
+FLASK_APP=app.py flask db current
 
 # 降级数据库
-flask db downgrade
+FLASK_APP=app.py flask db downgrade
 ```
+
+**重要**: Flask-Migrate 配置已优化以支持 Docker 和本地开发环境的不同路径结构。必须从 `app/` 目录运行迁移命令。
 
 ### 服务器部署注意事项
 ```bash
@@ -80,6 +86,7 @@ python app.py
   - `learning_record.py`: 学习记录模型
 - **services/**: 业务逻辑层
   - `vocabulary_service.py`: 词汇管理服务
+  - `sentence_review_service.py`: 句子复习服务，智能推荐算法
 - **utils/**: 工具类
   - `session_manager.py`: 会话管理
 - **核心功能模块**:
@@ -92,6 +99,7 @@ python app.py
 - 使用 SQLAlchemy ORM 和 Flask-Migrate
 - 默认 SQLite 数据库：`data/vocabulary.db`
 - 支持通过 `DATABASE_URL` 环境变量切换数据库
+- **路径配置**: 应用自动检测 Docker 和本地开发环境，智能选择数据库和迁移文件路径
 
 ### AI 服务集成
 - **翻译服务**: OpenAI API（支持 DeepSeek API）
@@ -113,15 +121,41 @@ python app.py
 - `DELETE /api/vocabulary/<id>`: 删除词汇
 
 ### 学习功能
-- `GET /vocabulary/learn`: 单词学习页面
+- `GET /vocabulary/learn`: 单词学习页面（选择题模式）
 - `GET /api/vocabulary/learn/start`: 开始学习会话
 - `POST /api/vocabulary/learn/record`: 记录学习结果
+
+### 句子复习功能
+- `GET /vocabulary/sentence-review`: 句子复习页面
+- `GET /api/vocabulary/sentence-review/start`: 开始句子复习会话
+- `POST /api/vocabulary/sentence-review/record`: 记录句子复习结果
+- `GET /api/vocabulary/sentence-review/stats`: 句子复习统计
 
 ### 语音合成
 - `POST /tts`: 语音合成 API
 - `GET /tts/<filename>`: 音频文件服务
 
+## 句子复习系统架构
+
+### 核心特性
+- **智能推荐算法**: 基于遗忘曲线，优先推荐掌握度低、最近未复习的单词
+- **多种复习模式**: 填空题、选择题、翻译、语境理解、混合模式
+- **个性化配置**: 可调整时间（5-20分钟）和单词数量（5-20个）
+- **数据追踪**: 记录句子掌握度、语境类型、响应时间等详细数据
+
+### 学习记录扩展
+`learning_records` 表已扩展支持句子复习功能：
+- `sentence_mastery`: 句子语境掌握度 (0-5)
+- `context_type`: 语境学习类型 ('fill_blank', 'choose_word', 'translate', 'context_meaning')
+- `action_type`: 支持新的 'sentence_review' 类型
+
 ## 开发注意事项
+
+### 路径配置重要说明
+应用使用智能路径检测，自动适配不同环境：
+- **本地开发**: 数据库和迁移文件在上级目录 (`../data/`, `../migrations/`)
+- **Docker 环境**: 文件在当前目录 (`./migrations/`, 数据通过卷挂载)
+- **Flask-Migrate**: 必须从 `app/` 目录运行，使用 `FLASK_APP=app.py` 环境变量
 
 ### 安全配置
 - API 密钥通过环境变量管理，不应提交到代码库

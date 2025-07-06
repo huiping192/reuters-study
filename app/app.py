@@ -14,6 +14,7 @@ import os
 from models.database import init_db, db
 from utils.session_manager import SessionManager
 from services.vocabulary_service import VocabularyService
+from services.sentence_review_service import SentenceReviewService
 from models.learning_record import LearningRecord
 
 app = Flask(__name__)
@@ -22,12 +23,28 @@ app = Flask(__name__)
 SessionManager.set_session_config(app)
 
 # 首先配置数据库连接但不创建表
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///data/vocabulary.db')
+# 使用绝对路径来避免Flask-Migrate路径问题
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+if 'DATABASE_URL' in os.environ:
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+else:
+    # 构造绝对路径
+    db_path = os.path.join(basedir, '..', 'data', 'vocabulary.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 # 初始化 Flask-Migrate
-migrate = Migrate(app, db)
+# 设置正确的migrations目录路径
+# 优先检查当前目录下的migrations，然后检查上级目录（适配Docker和本地开发）
+if os.path.exists(os.path.join(basedir, 'migrations')):
+    migrations_dir = os.path.join(basedir, 'migrations')
+else:
+    migrations_dir = os.path.join(basedir, '..', 'migrations')
+
+migrate = Migrate(app, db, directory=migrations_dir)
 
 # 数据库已在启动脚本中初始化，这里不需要再次执行
 
@@ -413,6 +430,112 @@ def record_learning_result():
             'success': True
         })
         
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+# 句子复习相关API端点
+@app.route('/vocabulary/sentence-review')
+def sentence_review_page():
+    """句子复习页面"""
+    return render_template('vocabulary/sentence-review.html')
+
+
+@app.route('/api/vocabulary/sentence-review/start', methods=['GET'])
+def start_sentence_review():
+    """开始句子复习会话"""
+    try:
+        user_id = SessionManager.get_user_id()
+        
+        # 获取请求参数
+        mode = request.args.get('mode', 'mixed')  # 复习模式
+        count = int(request.args.get('count', 10))  # 单词数量
+        time_limit = int(request.args.get('time_limit', 600))  # 时间限制（秒）
+        
+        # 获取句子复习单词
+        result = SentenceReviewService.get_review_words(
+            user_id=user_id,
+            mode=mode,
+            count=count,
+            time_limit=time_limit
+        )
+        
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'获取句子复习内容失败: {str(e)}'
+        }), 500
+
+
+@app.route('/api/vocabulary/sentence-review/record', methods=['POST'])
+def record_sentence_review():
+    """记录句子复习结果"""
+    try:
+        user_id = SessionManager.get_user_id()
+        data = request.get_json()
+        
+        required_fields = ['vocabulary_id', 'context_type', 'is_correct']
+        if not data or not all(field in data for field in required_fields):
+            return jsonify({
+                'success': False,
+                'error': '缺少必要参数'
+            }), 400
+        
+        # 记录句子复习结果
+        result = SentenceReviewService.record_sentence_review(
+            user_id=user_id,
+            vocabulary_id=data['vocabulary_id'],
+            context_type=data['context_type'],
+            is_correct=data['is_correct'],
+            response_time=data.get('response_time'),
+            sentence_mastery=data.get('sentence_mastery')
+        )
+        
+        if result:
+            return jsonify({
+                'success': True,
+                'data': result
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': '记录失败'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/vocabulary/sentence-review/stats', methods=['GET'])
+def get_sentence_review_stats():
+    """获取句子复习统计"""
+    try:
+        user_id = SessionManager.get_user_id()
+        
+        stats = SentenceReviewService.get_sentence_review_stats(user_id)
+        
+        if stats:
+            return jsonify({
+                'success': True,
+                'data': stats
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': '获取统计数据失败'
+            }), 500
+            
     except Exception as e:
         return jsonify({
             'success': False,

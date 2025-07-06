@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>句子复习 - 英语学习</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- 顶部导航 -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-800">句子复习</h1>
+            <div class="flex items-center space-x-4">
+                <span id="timer" class="text-lg font-semibold text-gray-600">10:00</span>
+                <button onclick="window.location.href='/vocabulary'" 
+                        class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                    返回词汇库
+                </button>
+            </div>
+        </div>
+
+        <!-- 复习模式选择 -->
+        <div id="mode-selection" class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">选择复习模式</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <button onclick="startReview('fill_blank')" 
+                        class="p-4 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                    <h3 class="font-semibold text-gray-700">句子填空</h3>
+                    <p class="text-sm text-gray-600">根据句子语境填入正确的单词</p>
+                </button>
+                <button onclick="startReview('choose_word')" 
+                        class="p-4 border rounded-lg hover:bg-green-50 hover:border-green-300 transition-colors">
+                    <h3 class="font-semibold text-gray-700">选择单词</h3>
+                    <p class="text-sm text-gray-600">从选项中选择句子中的正确单词</p>
+                </button>
+                <button onclick="startReview('translate')" 
+                        class="p-4 border rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-colors">
+                    <h3 class="font-semibold text-gray-700">翻译句子</h3>
+                    <p class="text-sm text-gray-600">翻译包含目标单词的句子</p>
+                </button>
+                <button onclick="startReview('context_meaning')" 
+                        class="p-4 border rounded-lg hover:bg-orange-50 hover:border-orange-300 transition-colors">
+                    <h3 class="font-semibold text-gray-700">语境理解</h3>
+                    <p class="text-sm text-gray-600">理解单词在句子中的含义</p>
+                </button>
+                <button onclick="startReview('mixed')" 
+                        class="p-4 border rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-colors">
+                    <h3 class="font-semibold text-gray-700">混合模式</h3>
+                    <p class="text-sm text-gray-600">随机组合各种复习模式</p>
+                </button>
+            </div>
+            
+            <!-- 设置选项 -->
+            <div class="mt-6 flex flex-wrap gap-4">
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-700">单词数量:</label>
+                    <select id="word-count" class="px-3 py-1 border rounded">
+                        <option value="5">5个</option>
+                        <option value="8">8个</option>
+                        <option value="10" selected>10个</option>
+                        <option value="15">15个</option>
+                        <option value="20">20个</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-700">时间限制:</label>
+                    <select id="time-limit" class="px-3 py-1 border rounded">
+                        <option value="300">5分钟</option>
+                        <option value="600" selected>10分钟</option>
+                        <option value="900">15分钟</option>
+                        <option value="1200">20分钟</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 学习进度 -->
+        <div id="progress-section" class="bg-white rounded-lg shadow p-6 mb-8 hidden">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-800">复习进度</h2>
+                    <p class="text-gray-600">已完成 <span id="completed-count">0</span> / <span id="total-count">0</span> 题</p>
+                </div>
+                <div class="w-64">
+                    <div class="h-2 bg-gray-200 rounded-full">
+                        <div id="progress-bar" class="h-2 bg-blue-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 复习卡片 -->
+        <div id="review-card" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <span id="review-mode-badge" class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                        复习模式
+                    </span>
+                    <span id="word-info" class="text-sm text-gray-500">
+                        <!-- 单词信息 -->
+                    </span>
+                </div>
+                <h3 id="question-title" class="text-lg font-semibold text-gray-700 mb-4">
+                    <!-- 问题标题 -->
+                </h3>
+            </div>
+            
+            <!-- 句子显示区域 -->
+            <div id="sentence-display" class="mb-6 p-4 bg-gray-50 rounded-lg">
+                <p id="sentence-text" class="text-lg leading-relaxed text-gray-800">
+                    <!-- 句子内容 -->
+                </p>
+            </div>
+            
+            <!-- 不同复习模式的问答区域 -->
+            <div id="question-area" class="mb-6">
+                <!-- 填空题 -->
+                <div id="fill-blank-area" class="hidden">
+                    <input type="text" id="blank-input" placeholder="请输入答案..." 
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p id="blank-hint" class="text-sm text-gray-500 mt-2"></p>
+                </div>
+                
+                <!-- 选择题 -->
+                <div id="choice-area" class="hidden">
+                    <div id="choice-options" class="grid grid-cols-1 gap-3">
+                        <!-- 选项将通过JavaScript动态添加 -->
+                    </div>
+                </div>
+                
+                <!-- 翻译题 -->
+                <div id="translate-area" class="hidden">
+                    <textarea id="translate-input" placeholder="请输入翻译..." rows="3"
+                              class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="flex justify-between items-center">
+                <button id="hint-btn" onclick="showHint()" 
+                        class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 hidden">
+                    提示
+                </button>
+                <div class="flex space-x-3">
+                    <button id="skip-btn" onclick="skipQuestion()" 
+                            class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                        跳过
+                    </button>
+                    <button id="submit-btn" onclick="submitAnswer()" 
+                            class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        提交
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 反馈区域 -->
+            <div id="feedback-area" class="mt-6 p-4 rounded-lg hidden">
+                <div id="feedback-content">
+                    <!-- 反馈内容 -->
+                </div>
+                <button id="next-btn" onclick="nextQuestion()" 
+                        class="mt-4 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                    下一题
+                </button>
+            </div>
+        </div>
+
+        <!-- 词汇不足提示 -->
+        <div id="insufficient-words-card" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
+            <div class="text-center">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">词汇数量不足</h2>
+                <p class="text-gray-600 mb-6">当前词汇库中带有例句的单词数量不足，请先添加更多带例句的单词。</p>
+                <p class="text-gray-500 mb-6">句子复习需要至少4个带例句的单词。</p>
+                <div class="flex justify-center space-x-4">
+                    <a href="/vocabulary" 
+                       class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        返回词汇库
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结果统计 -->
+        <div id="result-card" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">复习完成！</h2>
+                <div class="flex justify-center space-x-8">
+                    <div class="text-center">
+                        <p class="text-gray-600">正确率</p>
+                        <p id="accuracy" class="text-2xl font-bold text-green-600">0%</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-gray-600">用时</p>
+                        <p id="time-used" class="text-2xl font-bold text-blue-600">0:00</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-gray-600">复习模式</p>
+                        <p id="review-mode-result" class="text-2xl font-bold text-purple-600">混合</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <button onclick="backToModeSelection()" 
+                        class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                    选择其他模式
+                </button>
+                <button onclick="window.location.href='/vocabulary'" 
+                        class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                    返回词汇库
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSession = {
+            words: [],
+            currentIndex: 0,
+            correctCount: 0,
+            startTime: null,
+            timer: null,
+            mode: 'mixed',
+            currentWord: null,
+            isAnswered: false
+        };
+
+        const REVIEW_MODES = {
+            'fill_blank': '句子填空',
+            'choose_word': '选择单词',
+            'translate': '翻译句子',
+            'context_meaning': '语境理解',
+            'mixed': '混合模式'
+        };
+
+        // 开始复习
+        async function startReview(mode) {
+            currentSession.mode = mode;
+            const count = parseInt(document.getElementById('word-count').value);
+            const timeLimit = parseInt(document.getElementById('time-limit').value);
+            
+            try {
+                const response = await fetch(`/api/vocabulary/sentence-review/start?mode=${mode}&count=${count}&time_limit=${timeLimit}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentSession.words = data.data.words;
+                    currentSession.currentIndex = 0;
+                    currentSession.correctCount = 0;
+                    currentSession.startTime = new Date();
+                    
+                    // 隐藏模式选择，显示复习界面
+                    document.getElementById('mode-selection').classList.add('hidden');
+                    document.getElementById('progress-section').classList.remove('hidden');
+                    document.getElementById('review-card').classList.remove('hidden');
+                    
+                    // 更新进度显示
+                    document.getElementById('total-count').textContent = currentSession.words.length;
+                    document.getElementById('completed-count').textContent = '0';
+                    document.getElementById('progress-bar').style.width = '0%';
+                    
+                    // 显示第一个单词
+                    showCurrentWord();
+                    startTimer(timeLimit);
+                } else {
+                    // 显示错误信息
+                    document.getElementById('mode-selection').classList.add('hidden');
+                    document.getElementById('insufficient-words-card').classList.remove('hidden');
+                    document.querySelector('#insufficient-words-card p').textContent = data.error || '获取单词失败，请稍后重试';
+                }
+            } catch (error) {
+                console.error('开始复习失败:', error);
+                document.getElementById('mode-selection').classList.add('hidden');
+                document.getElementById('insufficient-words-card').classList.remove('hidden');
+                document.querySelector('#insufficient-words-card p').textContent = '系统错误，请稍后重试';
+            }
+        }
+
+        // 显示当前单词
+        function showCurrentWord() {
+            const word = currentSession.words[currentSession.currentIndex];
+            currentSession.currentWord = word;
+            currentSession.isAnswered = false;
+            
+            // 更新界面
+            document.getElementById('review-mode-badge').textContent = REVIEW_MODES[word.review_mode];
+            document.getElementById('word-info').textContent = `${word.word} (${word.pos || ''})`; 
+            document.getElementById('sentence-text').textContent = word.example;
+            
+            // 隐藏反馈区域
+            document.getElementById('feedback-area').classList.add('hidden');
+            
+            // 根据复习模式显示不同的问答区域
+            hideAllQuestionAreas();
+            
+            switch (word.review_mode) {
+                case 'fill_blank':
+                    showFillBlankQuestion(word);
+                    break;
+                case 'choose_word':
+                    showChoiceQuestion(word);
+                    break;
+                case 'translate':
+                    showTranslateQuestion(word);
+                    break;
+                case 'context_meaning':
+                    showContextMeaningQuestion(word);
+                    break;
+            }
+        }
+
+        // 隐藏所有问答区域
+        function hideAllQuestionAreas() {
+            document.getElementById('fill-blank-area').classList.add('hidden');
+            document.getElementById('choice-area').classList.add('hidden');
+            document.getElementById('translate-area').classList.add('hidden');
+        }
+
+        // 显示填空题
+        function showFillBlankQuestion(word) {
+            document.getElementById('question-title').textContent = '请填入空白处的单词：';
+            document.getElementById('sentence-text').innerHTML = word.question_data.sentence;
+            document.getElementById('blank-hint').textContent = word.question_data.hint;
+            document.getElementById('blank-input').value = '';
+            document.getElementById('fill-blank-area').classList.remove('hidden');
+            document.getElementById('blank-input').focus();
+        }
+
+        // 显示选择题
+        function showChoiceQuestion(word) {
+            document.getElementById('question-title').textContent = word.question_data.question;
+            const optionsContainer = document.getElementById('choice-options');
+            optionsContainer.innerHTML = '';
+            
+            word.question_data.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'w-full p-3 text-left border rounded-lg hover:bg-gray-50 transition-colors';
+                button.textContent = option;
+                button.onclick = () => selectChoice(option, button);
+                optionsContainer.appendChild(button);
+            });
+            
+            document.getElementById('choice-area').classList.remove('hidden');
+        }
+
+        // 显示翻译题
+        function showTranslateQuestion(word) {
+            document.getElementById('question-title').textContent = word.question_data.question;
+            document.getElementById('translate-input').value = '';
+            document.getElementById('translate-area').classList.remove('hidden');
+            document.getElementById('translate-input').focus();
+        }
+
+        // 显示语境理解题
+        function showContextMeaningQuestion(word) {
+            document.getElementById('question-title').textContent = word.question_data.question;
+            const optionsContainer = document.getElementById('choice-options');
+            optionsContainer.innerHTML = '';
+            
+            word.question_data.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'w-full p-3 text-left border rounded-lg hover:bg-gray-50 transition-colors';
+                button.textContent = option;
+                button.onclick = () => selectChoice(option, button);
+                optionsContainer.appendChild(button);
+            });
+            
+            document.getElementById('choice-area').classList.remove('hidden');
+        }
+
+        // 选择答案
+        let selectedAnswer = null;
+        let selectedButton = null;
+
+        function selectChoice(answer, button) {
+            // 清除之前的选择
+            if (selectedButton) {
+                selectedButton.classList.remove('bg-blue-100', 'border-blue-300');
+            }
+            
+            // 设置新的选择
+            selectedAnswer = answer;
+            selectedButton = button;
+            button.classList.add('bg-blue-100', 'border-blue-300');
+        }
+
+        // 提交答案
+        async function submitAnswer() {
+            if (currentSession.isAnswered) return;
+            
+            const word = currentSession.currentWord;
+            let userAnswer = '';
+            let isCorrect = false;
+            
+            // 获取用户答案
+            switch (word.review_mode) {
+                case 'fill_blank':
+                    userAnswer = document.getElementById('blank-input').value.trim();
+                    isCorrect = userAnswer.toLowerCase() === word.question_data.answer.toLowerCase();
+                    break;
+                case 'choose_word':
+                case 'context_meaning':
+                    userAnswer = selectedAnswer;
+                    isCorrect = userAnswer === word.question_data.answer;
+                    break;
+                case 'translate':
+                    userAnswer = document.getElementById('translate-input').value.trim();
+                    // 翻译题的判断比较复杂，这里简化处理
+                    isCorrect = userAnswer.includes(word.question_data.answer) || 
+                              word.question_data.answer.includes(userAnswer);
+                    break;
+            }
+            
+            if (!userAnswer) {
+                alert('请先提供答案！');
+                return;
+            }
+            
+            currentSession.isAnswered = true;
+            
+            // 记录答案
+            await recordAnswer(word.id, word.review_mode, isCorrect);
+            
+            // 显示反馈
+            showFeedback(isCorrect, userAnswer, word.question_data.answer);
+            
+            if (isCorrect) {
+                currentSession.correctCount++;
+            }
+            
+            // 更新进度
+            updateProgress();
+        }
+
+        // 显示反馈
+        function showFeedback(isCorrect, userAnswer, correctAnswer) {
+            const feedbackArea = document.getElementById('feedback-area');
+            const feedbackContent = document.getElementById('feedback-content');
+            
+            if (isCorrect) {
+                feedbackContent.innerHTML = `
+                    <div class="flex items-center text-green-600 mb-2">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="font-semibold">正确！</span>
+                    </div>
+                    <p class="text-gray-600">你的答案：${userAnswer}</p>
+                `;
+                feedbackArea.className = 'mt-6 p-4 bg-green-50 border border-green-200 rounded-lg';
+            } else {
+                feedbackContent.innerHTML = `
+                    <div class="flex items-center text-red-600 mb-2">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="font-semibold">错误</span>
+                    </div>
+                    <p class="text-gray-600">你的答案：${userAnswer}</p>
+                    <p class="text-gray-600">正确答案：${correctAnswer}</p>
+                `;
+                feedbackArea.className = 'mt-6 p-4 bg-red-50 border border-red-200 rounded-lg';
+            }
+            
+            feedbackArea.classList.remove('hidden');
+        }
+
+        // 下一题
+        function nextQuestion() {
+            currentSession.currentIndex++;
+            
+            if (currentSession.currentIndex >= currentSession.words.length) {
+                showResults();
+            } else {
+                showCurrentWord();
+            }
+        }
+
+        // 跳过问题
+        function skipQuestion() {
+            nextQuestion();
+        }
+
+        // 更新进度
+        function updateProgress() {
+            const completed = currentSession.currentIndex + 1;
+            const total = currentSession.words.length;
+            const progress = (completed / total) * 100;
+            
+            document.getElementById('completed-count').textContent = completed;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+        }
+
+        // 记录答案
+        async function recordAnswer(vocabularyId, contextType, isCorrect) {
+            try {
+                const response = await fetch('/api/vocabulary/sentence-review/record', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        vocabulary_id: vocabularyId,
+                        context_type: contextType,
+                        is_correct: isCorrect,
+                        response_time: new Date() - currentSession.startTime,
+                        sentence_mastery: isCorrect ? 4 : 2
+                    })
+                });
+                
+                const data = await response.json();
+                if (!data.success) {
+                    console.error('记录答案失败:', data.error);
+                }
+            } catch (error) {
+                console.error('记录答案失败:', error);
+            }
+        }
+
+        // 显示结果
+        function showResults() {
+            clearInterval(currentSession.timer);
+            document.getElementById('review-card').classList.add('hidden');
+            document.getElementById('progress-section').classList.add('hidden');
+            document.getElementById('result-card').classList.remove('hidden');
+            
+            const accuracy = (currentSession.correctCount / currentSession.words.length) * 100;
+            document.getElementById('accuracy').textContent = `${accuracy.toFixed(1)}%`;
+            
+            const timeUsed = Math.floor((new Date() - currentSession.startTime) / 1000);
+            const minutes = Math.floor(timeUsed / 60);
+            const seconds = timeUsed % 60;
+            document.getElementById('time-used').textContent = 
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('review-mode-result').textContent = REVIEW_MODES[currentSession.mode];
+        }
+
+        // 返回模式选择
+        function backToModeSelection() {
+            document.getElementById('result-card').classList.add('hidden');
+            document.getElementById('mode-selection').classList.remove('hidden');
+            
+            // 重置会话
+            currentSession = {
+                words: [],
+                currentIndex: 0,
+                correctCount: 0,
+                startTime: null,
+                timer: null,
+                mode: 'mixed',
+                currentWord: null,
+                isAnswered: false
+            };
+        }
+
+        // 计时器
+        function startTimer(timeLimit) {
+            let timeLeft = timeLimit;
+            updateTimerDisplay(timeLeft);
+            
+            currentSession.timer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay(timeLeft);
+                
+                if (timeLeft <= 0) {
+                    clearInterval(currentSession.timer);
+                    showResults();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            document.getElementById('timer').textContent = 
+                `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        // 键盘事件
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !currentSession.isAnswered) {
+                submitAnswer();
+            } else if (e.key === 'Enter' && currentSession.isAnswered) {
+                nextQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
