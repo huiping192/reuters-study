@@ -4,6 +4,11 @@
 echo "等待数据库准备就绪..."
 sleep 5
 
+# 确保数据目录权限正确
+echo "设置数据目录权限..."
+mkdir -p /app/data
+chmod 777 /app/data
+
 # 初始化数据库（确保数据库文件和基础结构存在）
 echo "初始化数据库..."
 python -c "
