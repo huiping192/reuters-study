@@ -34,7 +34,10 @@ class Vocabulary(db.Model):
                  example=None, pronunciation=None, difficulty_level=None, 
                  source_url=None, source_article_id=None):
         self.user_id = user_id
-        self.word = word.lower().strip()  # 统一转换为小写并去除空格
+        # 清理词汇：去除数字前缀、转换为小写并去除空格
+        import re
+        cleaned_word = re.sub(r'^\d+\.\s*', '', word.strip())  # 去除形如"1. "的数字前缀
+        self.word = cleaned_word.lower().strip()
         self.pos = pos
         self.definition_cn = definition_cn
         self.definition_en = definition_en
@@ -79,7 +82,11 @@ class Vocabulary(db.Model):
     @classmethod
     def add_or_update_vocabulary(cls, user_id, word_data):
         """添加或更新词汇"""
-        word = word_data.get('word', '').lower().strip()
+        import re
+        raw_word = word_data.get('word', '')
+        # 清理词汇：去除数字前缀、转换为小写并去除空格
+        cleaned_word = re.sub(r'^\d+\.\s*', '', raw_word.strip())
+        word = cleaned_word.lower().strip()
         if not word:
             return None
             
