@@ -7,9 +7,28 @@
     <div class="mb-8">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-3xl font-bold">我的词汇库</h1>
-            <button onclick="showAddWordModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                <i class="fas fa-plus mr-2"></i>添加单词
+            <button onclick="showAddWordModal()" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                <i class="fas fa-cog mr-2"></i>高级添加
             </button>
+        </div>
+        
+        <!-- 快捷添加单词区域 -->
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-6 border border-blue-200">
+            <div class="flex items-center space-x-4">
+                <div class="flex-1">
+                    <input type="text" id="quick-word-input" 
+                           class="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg"
+                           placeholder="输入单词，按回车快速添加... (Ctrl+K 聚焦)">
+                </div>
+                <button onclick="quickAddWord()" 
+                        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    <i class="fas fa-plus mr-2"></i>添加
+                </button>
+            </div>
+            <div class="flex items-center mt-2 text-sm text-gray-600">
+                <i class="fas fa-lightbulb mr-2 text-yellow-500"></i>
+                <span>小贴士：支持批量添加（用空格分隔多个单词），按 ESC 清空输入框</span>
+            </div>
         </div>
         
         <!-- 统计信息 -->
@@ -138,6 +157,41 @@
 
 {% block scripts %}
 <script>
+// Toast 提示系统
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium z-50 transform transition-all duration-300 translate-x-full opacity-0`;
+    
+    if (type === 'success') {
+        toast.classList.add('bg-green-500');
+    } else if (type === 'error') {
+        toast.classList.add('bg-red-500');
+    } else if (type === 'info') {
+        toast.classList.add('bg-blue-500');
+    } else if (type === 'warning') {
+        toast.classList.add('bg-yellow-500');
+    }
+    
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // 动画显示
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full', 'opacity-0');
+    }, 100);
+    
+    // 3秒后自动消失
+    setTimeout(() => {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
+</script>
+<script>
 let currentPage = 1;
 const pageSize = 20;
 let totalItems = 0;
@@ -239,14 +293,14 @@ async function updateVocabulary(vocabId) {
         const data = await response.json();
         
         if (data.success) {
-            alert('词汇信息已更新！');
+            showToast('词汇信息已更新！', 'success');
             loadVocabulary(currentPage);
         } else {
-            alert('更新失败：' + data.error);
+            showToast('更新失败：' + data.error, 'error');
         }
     } catch (error) {
         console.error('更新词汇失败:', error);
-        alert('更新失败，请重试');
+        showToast('更新失败，请重试', 'error');
     }
 }
 
@@ -332,7 +386,72 @@ function hideAddWordModal() {
     document.getElementById('add-word-form').reset();
 }
 
-// 处理添加单词表单提交
+// 快捷添加单词功能
+async function quickAddWord() {
+    const input = document.getElementById('quick-word-input');
+    const words = input.value.trim();
+    
+    if (!words) {
+        showToast('请输入单词', 'warning');
+        return;
+    }
+    
+    // 支持批量添加（空格分隔）
+    const wordList = words.split(/\s+/).filter(word => word.length > 0);
+    
+    if (wordList.length === 0) {
+        showToast('请输入有效的单词', 'warning');
+        return;
+    }
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    showToast(`开始添加 ${wordList.length} 个单词...`, 'info');
+    
+    for (const word of wordList) {
+        try {
+            const response = await fetch('/api/vocabulary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ word: word })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                successCount++;
+                // 异步更新单词信息（不等待）
+                updateVocabularyInBackground(data.data.id);
+            } else {
+                failCount++;
+                console.warn(`添加单词 "${word}" 失败:`, data.error);
+            }
+        } catch (error) {
+            failCount++;
+            console.error(`添加单词 "${word}" 出错:`, error);
+        }
+    }
+    
+    // 清空输入框并保持焦点
+    input.value = '';
+    input.focus();
+    
+    // 刷新列表和统计
+    loadVocabulary(currentPage);
+    loadStats();
+    
+    // 显示结果提示
+    if (failCount === 0) {
+        showToast(`成功添加 ${successCount} 个单词！`, 'success');
+    } else {
+        showToast(`成功 ${successCount} 个，失败 ${failCount} 个`, 'warning');
+    }
+}
+
+// 处理添加单词表单提交（模态框）
 document.getElementById('add-word-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -340,7 +459,7 @@ document.getElementById('add-word-form').addEventListener('submit', async functi
     const sourceUrl = document.getElementById('source-url-input').value.trim();
     
     if (!word) {
-        alert('请输入单词');
+        showToast('请输入单词', 'warning');
         return;
     }
     
@@ -361,7 +480,7 @@ document.getElementById('add-word-form').addEventListener('submit', async functi
         
         if (addData.success) {
             // 显示添加成功提示
-            alert('单词添加成功！正在后台更新详细信息...');
+            showToast('单词添加成功！正在后台更新详细信息...', 'success');
             hideAddWordModal();
             loadVocabulary(currentPage);
             loadStats();
@@ -369,11 +488,11 @@ document.getElementById('add-word-form').addEventListener('submit', async functi
             // 异步更新单词信息
             updateVocabularyInBackground(addData.data.id);
         } else {
-            alert('添加失败：' + addData.error);
+            showToast('添加失败：' + addData.error, 'error');
         }
     } catch (error) {
         console.error('添加单词失败:', error);
-        alert('添加失败，请重试');
+        showToast('添加失败，请重试', 'error');
     }
 });
 
@@ -389,16 +508,10 @@ async function updateVocabularyInBackground(vocabId) {
         if (updateData.success) {
             // 更新成功后刷新列表
             loadVocabulary(currentPage);
-            // 可以添加一个小的提示，告诉用户更新完成
-            const toast = document.createElement('div');
-            toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg';
-            toast.textContent = '单词详细信息已更新完成！';
-            document.body.appendChild(toast);
-            
-            // 3秒后自动移除提示
+            // 使用统一的toast系统
             setTimeout(() => {
-                toast.remove();
-            }, 3000);
+                showToast('单词详细信息已更新完成！', 'success');
+            }, 2000);
         } else {
             console.error('自动更新失败:', updateData.error);
         }
@@ -406,5 +519,30 @@ async function updateVocabularyInBackground(vocabId) {
         console.error('自动更新失败:', error);
     }
 }
+
+// 键盘快捷键支持
+document.addEventListener('keydown', function(e) {
+    // Ctrl/Cmd + K: 聚焦到快捷输入框
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('quick-word-input').focus();
+    }
+    
+    // ESC: 清空快捷输入框
+    if (e.key === 'Escape') {
+        const quickInput = document.getElementById('quick-word-input');
+        if (document.activeElement === quickInput) {
+            quickInput.value = '';
+        }
+    }
+});
+
+// 快捷输入框回车键支持
+document.getElementById('quick-word-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        quickAddWord();
+    }
+});
 </script>
 {% endblock %} 
