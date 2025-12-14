@@ -3,7 +3,7 @@ import feedparser
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from typing import List
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 
 def get_bbc_news_with_category(max_news=20):
@@ -29,13 +29,19 @@ def get_bbc_news_with_category(max_news=20):
                 continue
 
             for entry in feed.entries[:max_news]:
-                # 解析发布时间
                 published = entry.get('published', '')
                 try:
-                    dt = datetime.strptime(published, '%a, %d %b %Y %H:%M:%S %Z')
+                    dt = datetime.strptime(published, '%a, %d %b %Y %H:%M:%S GMT')
+                    dt = dt.replace(tzinfo=timezone.utc)
+
+                    now_utc = datetime.now(timezone.utc)
+                    if (now_utc - dt) > timedelta(hours=24):
+                        continue
+
                     date_str = dt.strftime('%Y-%m-%d')
-                except:
-                    date_str = published
+                except Exception as e:
+                    print(f"警告: 日期解析失败 '{published}': {e}")
+                    continue
 
                 news_entry = {
                     'title': entry.title,
@@ -50,6 +56,16 @@ def get_bbc_news_with_category(max_news=20):
         except Exception as e:
             print(f"获取 {main_category} 新闻失败: {e}")
             continue
+
+    categorized_news = {
+        main_cat: {
+            sub_cat: items
+            for sub_cat, items in sub_cats.items()
+            if items
+        }
+        for main_cat, sub_cats in categorized_news.items()
+        if any(items for items in sub_cats.values())
+    }
 
     return categorized_news
 
