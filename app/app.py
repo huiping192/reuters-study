@@ -5,7 +5,7 @@ from flask_migrate import Migrate
 
 from audio_manager import generate_audio
 from news_analytics import ArticleProcessor
-from reuters_manager import get_reuters_news_with_subcategory, get_reuters_article, split_into_paragraphs
+from bbc_manager import get_bbc_news_with_category, get_bbc_article, split_into_paragraphs
 import urllib.parse
 from flask import send_from_directory
 import os
@@ -55,8 +55,8 @@ os.makedirs(TTS_DIR, exist_ok=True)
 
 @app.route('/')
 def index():
-    # 获取新闻数据
-    news_data = get_reuters_news_with_subcategory()
+    # 获取BBC新闻数据
+    news_data = get_bbc_news_with_category()
 
     # 如果获取失败显示错误信息
     if not news_data:
@@ -77,7 +77,7 @@ def detail(encoded_url):
     try:
         # 解码URL并获取文章内容
         news_url = urllib.parse.unquote(encoded_url)
-        article = get_reuters_article(news_url)
+        article = get_bbc_article(news_url)
         # 解析内容段落
         paragraphs = split_into_paragraphs(article['content'])
         # 构造上下文数据

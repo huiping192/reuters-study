@@ -5,10 +5,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 项目概述
 
 这是一个基于 Flask 的智能英语新闻学习平台，主要功能包括：
-- 抓取路透社新闻并进行分类展示
+- 抓取BBC新闻并进行分类展示（支持World、Business、Technology、Science等分类）
 - AI 驱动的翻译、词汇分析和语音合成
 - 个人词汇库管理和学习记录
 - 支持 SQLite 数据库的持久化存储
+
+**新闻源说明**：项目已从路透社切换到BBC News，通过官方RSS Feed获取新闻，稳定可靠且完全免费。
 
 ## 常用开发命令
 
@@ -90,7 +92,7 @@ python app.py
 - **utils/**: 工具类
   - `session_manager.py`: 会话管理
 - **核心功能模块**:
-  - `reuters_manager.py`: 路透社新闻抓取和解析
+  - `bbc_manager.py`: BBC新闻抓取和解析（通过RSS Feed和网页抓取）
   - `news_analytics.py`: AI 文章分析和翻译
   - `audio_manager.py`: 语音合成服务
   - `config.py`: 配置管理
