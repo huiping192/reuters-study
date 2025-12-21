@@ -308,7 +308,15 @@ def update_vocabulary_with_ai(vocab_id):
                 'success': False,
                 'error': '词汇不存在'
             }), 404
-            
+
+        # 如果已有中文释义，直接返回，不调用AI
+        if vocab.get('definition_cn'):
+            return jsonify({
+                'success': True,
+                'data': vocab,
+                'message': '单词已有完整信息，无需更新'
+            })
+
         # 使用AI更新词汇信息
         processor = ArticleProcessor()
         updated_info = processor.process_word(vocab['word'])

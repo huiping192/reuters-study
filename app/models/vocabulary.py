@@ -96,9 +96,9 @@ class Vocabulary(db.Model):
         if existing_vocab:
             # 如果已存在，增加频率并更新信息
             existing_vocab.increment_frequency()
-            # 更新其他信息（如果提供了新的信息）
-            update_data = {k: v for k, v in word_data.items() 
-                          if k != 'word' and v is not None}
+            # 更新其他信息（只更新有实际值的字段，排除None和空字符串）
+            update_data = {k: v for k, v in word_data.items()
+                          if k != 'word' and v}
             if update_data:
                 existing_vocab.update_info(**update_data)
             db.session.commit()

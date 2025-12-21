@@ -98,9 +98,10 @@
                     </select>
                 </div>
                 <div class="w-48">
-                    <select id="sort-by" 
+                    <select id="sort-by"
                             class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="created_at">按添加时间</option>
+                        <option value="updated_at">按最新操作</option>
+                        <option value="created_at">按首次添加</option>
                         <option value="word">按字母顺序</option>
                         <option value="frequency">按出现频率</option>
                     </select>
@@ -422,8 +423,11 @@ async function quickAddWord() {
             
             if (data.success) {
                 successCount++;
-                // 异步更新单词信息（不等待）
-                updateVocabularyInBackground(data.data.id);
+                // 只在单词缺少中文释义时才调用AI更新
+                const needsUpdate = !data.data.definition_cn;
+                if (needsUpdate) {
+                    updateVocabularyInBackground(data.data.id);
+                }
             } else {
                 failCount++;
                 console.warn(`添加单词 "${word}" 失败:`, data.error);
@@ -483,9 +487,17 @@ document.getElementById('add-word-form').addEventListener('submit', async functi
             hideAddWordModal();
             loadVocabulary(currentPage);
             loadStats();
-            
-            // 异步更新单词信息
-            updateVocabularyInBackground(addData.data.id);
+
+            // 只在单词缺少中文释义时才调用AI更新
+            const needsUpdate = !addData.data.definition_cn;
+            if (needsUpdate) {
+                updateVocabularyInBackground(addData.data.id);
+            } else {
+                // 已有完整信息，直接提示成功
+                setTimeout(() => {
+                    showToast('单词已存在词库中！', 'info');
+                }, 500);
+            }
         } else {
             showToast('添加失败：' + addData.error, 'error');
         }
