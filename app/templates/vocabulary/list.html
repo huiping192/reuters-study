@@ -16,9 +16,9 @@
         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-6 border border-blue-200">
             <div class="flex items-center space-x-4">
                 <div class="flex-1">
-                    <input type="text" id="quick-word-input" 
+                    <input type="text" id="quick-word-input"
                            class="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg"
-                           placeholder="输入单词，按回车快速添加... (Ctrl+K 聚焦)">
+                           placeholder="输入单词（逗号分隔多个），按回车快速添加... (Ctrl+K 聚焦)">
                 </div>
                 <button onclick="quickAddWord()" 
                         class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
@@ -27,7 +27,7 @@
             </div>
             <div class="flex items-center mt-2 text-sm text-gray-600">
                 <i class="fas fa-lightbulb mr-2 text-yellow-500"></i>
-                <span>小贴士：支持批量添加（用空格分隔多个单词），按 ESC 清空输入框</span>
+                <span>小贴士：支持批量添加（用逗号分隔多个单词），按 ESC 清空输入框</span>
             </div>
         </div>
         
@@ -396,8 +396,7 @@ async function quickAddWord() {
         return;
     }
     
-    // 支持批量添加（空格分隔）
-    const wordList = words.split(/\s+/).filter(word => word.length > 0);
+    const wordList = words.split(/,\s*/).filter(word => word.length > 0);
     
     if (wordList.length === 0) {
         showToast('请输入有效的单词', 'warning');
