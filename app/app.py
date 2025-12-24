@@ -52,6 +52,22 @@ migrate = Migrate(app, db, directory=migrations_dir)
 TTS_DIR = os.path.join(app.static_folder, 'tts')
 os.makedirs(TTS_DIR, exist_ok=True)
 
+# 初始化TTS缓存服务
+from services.tts_cache_service import TTSCacheService
+
+
+def get_tts_cache_db_path():
+    """获取TTS缓存数据库路径"""
+    if os.path.exists('/app/data/tts_cache.db'):
+        return '/app/data/tts_cache.db'
+    else:
+        data_dir = os.path.join(basedir, '..', 'data')
+        os.makedirs(data_dir, exist_ok=True)
+        return os.path.join(data_dir, 'tts_cache.db')
+
+
+tts_cache_service = TTSCacheService(get_tts_cache_db_path(), TTS_DIR)
+
 
 @app.route('/')
 def index():
@@ -171,6 +187,62 @@ def handle_tts():
 @app.route('/tts/<filename>')
 def serve_audio(filename):
     return send_from_directory(TTS_DIR, filename)
+
+
+@app.route('/api/vocabulary/tts/word', methods=['POST'])
+def tts_word():
+    """单词TTS接口"""
+    data = request.json
+    word = data.get('word', '').strip()
+
+    if not word:
+        return jsonify({'success': False, 'error': '单词不能为空'}), 400
+
+    try:
+        is_cached, audio_url = tts_cache_service.get_or_create_audio(word, cache_type='word')
+        return jsonify({
+            'success': True,
+            'audio_url': audio_url,
+            'cached': is_cached
+        })
+    except Exception as e:
+        print(f'单词TTS生成失败: {str(e)}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/vocabulary/tts/sentence', methods=['POST'])
+def tts_sentence():
+    """例句TTS接口"""
+    data = request.json
+    vocab_id = data.get('vocab_id')
+    sentence = data.get('sentence', '').strip()
+
+    if not sentence:
+        return jsonify({'success': False, 'error': '例句不能为空'}), 400
+
+    try:
+        is_cached, audio_url = tts_cache_service.get_or_create_audio(
+            sentence,
+            cache_type='sentence'
+        )
+        return jsonify({
+            'success': True,
+            'audio_url': audio_url,
+            'cached': is_cached
+        })
+    except Exception as e:
+        print(f'例句TTS生成失败: {str(e)}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/vocabulary/tts/stats', methods=['GET'])
+def tts_cache_stats():
+    """TTS缓存统计接口"""
+    try:
+        stats = tts_cache_service.get_cache_stats()
+        return jsonify({'success': True, 'data': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # 词汇相关API端点

@@ -226,7 +226,14 @@ function renderVocabularyList(vocabularies) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">${vocab.word}</div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm font-medium text-gray-900">${vocab.word}</span>
+                    <button onclick="playWordTTS('${vocab.word}', event)"
+                            class="text-blue-500 hover:text-blue-700 transition-colors"
+                            title="朗读单词">
+                        <i class="fas fa-volume-up fa-sm"></i>
+                    </button>
+                </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-500">${vocab.pos || '-'}</div>
@@ -235,7 +242,16 @@ function renderVocabularyList(vocabularies) {
                 <div class="text-sm text-gray-900">${vocab.definition_cn || '-'}</div>
             </td>
             <td class="px-6 py-4">
-                <div class="text-sm text-gray-900 italic">${vocab.example || '-'}</div>
+                <div class="flex items-center space-x-2">
+                    <div class="text-sm text-gray-900 italic flex-1">${vocab.example || '-'}</div>
+                    ${vocab.example && vocab.example !== '-' ? `
+                        <button onclick="playSentenceTTS(${vocab.id}, \`${escapeHtml(vocab.example)}\`, event)"
+                                class="text-green-500 hover:text-green-700 transition-colors flex-shrink-0"
+                                title="朗读例句">
+                            <i class="fas fa-volume-up fa-sm"></i>
+                        </button>
+                    ` : ''}
+                </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -555,5 +571,106 @@ document.getElementById('quick-word-input').addEventListener('keydown', function
         quickAddWord();
     }
 });
+
+// TTS功能
+const ttsAudioCache = new Map();
+
+// 播放单词发音
+async function playWordTTS(word, event) {
+    const button = event.currentTarget;
+    const originalHtml = button.innerHTML;
+
+    // 检查内存缓存
+    if (ttsAudioCache.has(word)) {
+        playFromCache(word, button, originalHtml);
+        return;
+    }
+
+    try {
+        button.innerHTML = '<i class="fas fa-spinner fa-spin fa-sm"></i>';
+        button.disabled = true;
+
+        const response = await fetch('/api/vocabulary/tts/word', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ word })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'TTS生成失败');
+
+        if (data.success) {
+            ttsAudioCache.set(word, data.audio_url);
+            const audio = new Audio(data.audio_url);
+            await audio.play();
+        }
+    } catch (error) {
+        console.error('单词TTS失败:', error);
+        showToast('语音生成失败: ' + error.message, 'error');
+    } finally {
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+    }
+}
+
+// 播放例句
+async function playSentenceTTS(vocabId, sentence, event) {
+    const button = event.currentTarget;
+    const originalHtml = button.innerHTML;
+    const cacheKey = `sentence_${vocabId}`;
+
+    if (ttsAudioCache.has(cacheKey)) {
+        playFromCache(cacheKey, button, originalHtml);
+        return;
+    }
+
+    try {
+        button.innerHTML = '<i class="fas fa-spinner fa-spin fa-sm"></i>';
+        button.disabled = true;
+
+        const response = await fetch('/api/vocabulary/tts/sentence', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vocab_id: vocabId, sentence })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'TTS生成失败');
+
+        if (data.success) {
+            ttsAudioCache.set(cacheKey, data.audio_url);
+            const audio = new Audio(data.audio_url);
+            await audio.play();
+        }
+    } catch (error) {
+        console.error('例句TTS失败:', error);
+        showToast('语音生成失败: ' + error.message, 'error');
+    } finally {
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+    }
+}
+
+// 从缓存播放
+function playFromCache(key, button, originalHtml) {
+    button.innerHTML = '<i class="fas fa-spinner fa-spin fa-sm"></i>';
+    button.disabled = true;
+
+    const audio = new Audio(ttsAudioCache.get(key));
+    audio.play()
+        .catch(error => {
+            console.error('播放失败:', error);
+            showToast('播放失败', 'error');
+        })
+        .finally(() => {
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+        });
+}
+
+// HTML转义工具函数
+function escapeHtml(text) {
+    return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
 </script>
 {% endblock %} 
