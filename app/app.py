@@ -623,5 +623,68 @@ def get_sentence_review_stats():
         }), 500
 
 
+# ─── AI Assistant API ──────────────────────────────────────────────────────
+# 供 AI 助手（OpenClaw / John）调用的接口
+# GET /api/ai/news?category=top&limit=10
+# GET /api/ai/news/article?url=<url>
+
+@app.route('/api/ai/news', methods=['GET'])
+def ai_get_news():
+    """获取最新 BBC 新闻列表"""
+    category = request.args.get('category', 'top')
+    limit = min(int(request.args.get('limit', 10)), 30)
+
+    BBC_FEEDS = {
+        'top':        'http://feeds.bbci.co.uk/news/rss.xml',
+        'world':      'http://feeds.bbci.co.uk/news/world/rss.xml',
+        'technology': 'http://feeds.bbci.co.uk/news/technology/rss.xml',
+        'business':   'http://feeds.bbci.co.uk/news/business/rss.xml',
+        'science':    'http://feeds.bbci.co.uk/news/science_and_environment/rss.xml',
+        'health':     'http://feeds.bbci.co.uk/news/health/rss.xml',
+    }
+    import feedparser
+    url = BBC_FEEDS.get(category, BBC_FEEDS['top'])
+    feed = feedparser.parse(url)
+    articles = [
+        {
+            'title':     e.get('title', ''),
+            'summary':   e.get('summary', ''),
+            'url':       e.get('link', ''),
+            'published': e.get('published', ''),
+        }
+        for e in feed.entries[:limit]
+    ]
+    return jsonify({'success': True, 'category': category, 'data': articles})
+
+
+@app.route('/api/ai/news/article', methods=['GET'])
+def ai_get_article():
+    """获取某篇文章正文"""
+    url = request.args.get('url', '')
+    if not url:
+        return jsonify({'success': False, 'error': 'url is required'}), 400
+
+    from bs4 import BeautifulSoup
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (compatible; reuters-study/1.0)'}
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        article = soup.find('article') or soup
+        paragraphs = [p.get_text().strip() for p in article.find_all('p') if p.get_text().strip()]
+        title_tag = soup.find('h1')
+        title = title_tag.get_text().strip() if title_tag else ''
+        content = '\n\n'.join(paragraphs)
+        return jsonify({
+            'success': True,
+            'url':    url,
+            'title':  title,
+            'content': content,
+            'word_count': len(content.split()),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True)
