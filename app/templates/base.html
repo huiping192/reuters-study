@@ -13,14 +13,15 @@
 <body class="bg-gray-50">
     <!-- 顶部导航栏 -->
     <nav class="bg-white shadow-sm">
-        <div class="max-w-4xl mx-auto px-4">
-            <div class="flex justify-between items-center h-16">
-                <a href="/" class="text-xl font-bold text-gray-800">Reuters Study</a>
-                <div class="flex items-center space-x-4">
-                    <a href="/" class="text-gray-600 hover:text-gray-900">新闻列表</a>
-                    <a href="/vocabulary" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        <i class="fas fa-book mr-2"></i>
-                        我的词汇库
+        <div class="max-w-7xl sm:max-w-4xl mx-auto px-3 sm:px-4">
+            <div class="flex justify-between items-center h-14 sm:h-16">
+                <a href="/" class="text-lg sm:text-xl font-bold text-gray-800">Reuters Study</a>
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <a href="/" class="text-sm sm:text-base text-gray-600 hover:text-gray-900">新闻列表</a>
+                    <a href="/vocabulary" class="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-book mr-1 sm:mr-2"></i>
+                        <span class="hidden sm:inline">我的词汇库</span>
+                        <span class="sm:hidden">词汇</span>
                     </a>
                 </div>
             </div>
@@ -34,7 +35,7 @@
 
     <!-- 页脚 -->
     <footer class="bg-white border-t mt-8">
-        <div class="max-w-4xl mx-auto px-4 py-6">
+        <div class="max-w-7xl sm:max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
             <p class="text-center text-gray-600 text-sm">
                 © 2024 Reuters Study. All rights reserved.
             </p>
@@ -44,4 +45,4 @@
     <!-- 页面脚本 -->
     {% block scripts %}{% endblock %}
 </body>
-</html> 
+</html>
