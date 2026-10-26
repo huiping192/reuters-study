@@ -15,6 +15,7 @@ from models.database import init_db, db
 from utils.session_manager import SessionManager
 from services.vocabulary_service import VocabularyService
 from services.sentence_review_service import SentenceReviewService
+from services.game_lookup_service import GameLookupService
 from models.learning_record import LearningRecord
 
 app = Flask(__name__)
@@ -322,6 +323,20 @@ def vocabulary_api():
             'success': False,
             'error': str(e)
         }), 500
+
+
+@app.route('/api/game/lookup', methods=['POST'])
+def game_lookup():
+    """游戏对白查词：不调用 LLM，返回生词释义并计入词库。"""
+    data = request.get_json(silent=True)
+    if not data or not str(data.get('text', '')).strip():
+        return jsonify({'success': False, 'error': '缺少 text'}), 400
+    try:
+        items, unresolved = GameLookupService.lookup(
+            SessionManager.get_user_id(), data['text'].strip(), data.get('game'))
+        return jsonify({'success': True, 'items': items, 'unresolved': unresolved})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/vocabulary/stats', methods=['GET'])
