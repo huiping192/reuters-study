@@ -81,8 +81,9 @@ class MainLoopTest(unittest.TestCase):
             if ticks['n'] > 12:
                 raise KeyboardInterrupt
 
-        argv = ['--source', 'Switch', '--game', 'itest', '--port', str(obs.port),
-                '--server', f'http://127.0.0.1:{http.server_port}', '--region', '0.05,0.65,0.95,1.0']
+        argv = ['--auto', '--source', 'Switch', '--game', 'itest', '--port', str(obs.port),
+                '--server', f'http://127.0.0.1:{http.server_port}', '--region', '0.05,0.65,0.95,1.0',
+                '--password', 'x']
         with mock.patch.object(obs_game_lookup, 'windows_ocr', return_value='The magistrate\nvowed to leave.'), \
                 mock.patch.object(obs_game_lookup.time, 'sleep', fake_sleep), \
                 mock.patch.object(obs_game_lookup.time, 'monotonic', lambda: clock['t']):
@@ -92,6 +93,41 @@ class MainLoopTest(unittest.TestCase):
         self.assertEqual(LookupHandler.posted, [{'text': 'The magistrate vowed to leave.', 'game': 'itest'}])
         self.assertEqual(obs.text_updates, ['vowed  n. 誓约'])
         self.assertTrue(any(r[0] == 'GetSourceScreenshot' for r in obs.requests))
+
+    def test_hotkey_mode_queries_only_on_keypress_and_clears_later(self):
+        LookupHandler.posted.clear()
+        obs = FakeOBS()
+        obs.frames_served = 1  # 直接给出带对白框的画面
+        http = HTTPServer(('127.0.0.1', 0), LookupHandler)
+        threading.Thread(target=http.serve_forever, daemon=True).start()
+
+        clock = {'t': 0.0}
+        ticks = {'n': 0}
+        down = {0: False, 3: True, 4: True, 5: False}  # 按下并按住两拍只算一次
+
+        def fake_sleep(dt):
+            clock['t'] += 1.0
+            ticks['n'] += 1
+            if ticks['n'] > 25:
+                raise KeyboardInterrupt
+
+        argv = ['--source', 'Switch', '--game', 'itest', '--port', str(obs.port),
+                '--server', f'http://127.0.0.1:{http.server_port}', '--clear-after', '10']
+        state = {'v': False}
+
+        def fake_key(vk):
+            state['v'] = down.get(ticks['n'], state['v'])
+            return state['v']
+
+        with mock.patch.object(obs_game_lookup, 'windows_ocr', return_value='The magistrate vowed to leave.'), \
+                mock.patch.object(obs_game_lookup, 'key_down', fake_key), \
+                mock.patch.object(obs_game_lookup.time, 'sleep', fake_sleep), \
+                mock.patch.object(obs_game_lookup.time, 'monotonic', lambda: clock['t']):
+            with self.assertRaises(KeyboardInterrupt):
+                obs_game_lookup.main(argv + ['--password', 'x'])
+
+        self.assertEqual(len(LookupHandler.posted), 1)
+        self.assertEqual(obs.text_updates, ['vowed  n. 誓约', ''])
 
 
 if __name__ == '__main__':

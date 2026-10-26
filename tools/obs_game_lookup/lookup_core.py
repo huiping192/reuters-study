@@ -87,3 +87,25 @@ def post_lookup(server, text, game, timeout=5):
 
 def text_digest(text):
     return hashlib.md5(text.lower().encode()).hexdigest()
+
+
+def parse_hotkey(name):
+    """'F9' -> 0x78，单个字母或数字取其 ASCII 码；Windows 虚拟键码与此一致。"""
+    name = name.strip().upper()
+    if re.fullmatch(r'F([1-9]|1[0-2])', name):
+        return 0x6F + int(name[1:])
+    if re.fullmatch(r'[A-Z0-9]', name):
+        return ord(name)
+    raise ValueError(f'不支持的热键: {name!r}，请用 F1-F12 或单个字母/数字')
+
+
+class EdgeTrigger:
+    """按住不放只算一次按下。"""
+
+    def __init__(self):
+        self._down = False
+
+    def pressed(self, is_down):
+        fired = is_down and not self._down
+        self._down = is_down
+        return fired

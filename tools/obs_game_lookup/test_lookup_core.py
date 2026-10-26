@@ -5,9 +5,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from PIL import Image, ImageDraw
 
-from lookup_core import (StableChange, clean_ocr_text, crop_region, format_items,
+from lookup_core import (EdgeTrigger, StableChange, clean_ocr_text, crop_region, format_items,
                          frame_signature, frames_differ, looks_like_dialogue, post_lookup,
-                         prepare_for_ocr)
+                         parse_hotkey, prepare_for_ocr)
 
 
 def img(shade, box=None):
@@ -49,6 +49,18 @@ class CoreTests(unittest.TestCase):
         out = prepare_for_ocr(img(10, (20, 120, 300, 170)))
         self.assertEqual(out.size, (800, 450))
         self.assertEqual(out.mode, 'RGB')
+
+    def test_parse_hotkey(self):
+        self.assertEqual(parse_hotkey('f9'), 0x78)
+        self.assertEqual(parse_hotkey('F1'), 0x70)
+        self.assertEqual(parse_hotkey('q'), ord('Q'))
+        with self.assertRaises(ValueError):
+            parse_hotkey('ctrl+x')
+
+    def test_edge_trigger_fires_once_per_press(self):
+        e = EdgeTrigger()
+        self.assertEqual([e.pressed(x) for x in (False, True, True, False, True)],
+                         [False, True, False, False, True])
 
     def test_clean_ocr_text(self):
         self.assertEqual(clean_ocr_text("I can't be-\nlieve  you\nare here."),
