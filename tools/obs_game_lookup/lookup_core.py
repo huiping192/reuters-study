@@ -4,7 +4,7 @@ import json
 import re
 import urllib.request
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 HASH_SIZE = (32, 18)
 
@@ -49,6 +49,12 @@ def crop_region(img, region):
     w, h = img.size
     l, t, r, b = region
     return img.crop((int(l * w), int(t * h), int(r * w), int(b * h)))
+
+
+def prepare_for_ocr(img, scale=2.5):
+    """灰度 + 拉伸对比度 + 放大。采集卡画面偏糊，实测 Windows OCR 相似度 0.79 -> 0.97；二值化反而会破坏笔画。"""
+    gray = ImageOps.autocontrast(img.convert('L'), cutoff=2)
+    return gray.resize((int(gray.width * scale), int(gray.height * scale)), Image.LANCZOS).convert('RGB')
 
 
 def clean_ocr_text(text):

@@ -6,7 +6,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from PIL import Image, ImageDraw
 
 from lookup_core import (StableChange, clean_ocr_text, crop_region, format_items,
-                         frame_signature, frames_differ, looks_like_dialogue, post_lookup)
+                         frame_signature, frames_differ, looks_like_dialogue, post_lookup,
+                         prepare_for_ocr)
 
 
 def img(shade, box=None):
@@ -43,6 +44,11 @@ class CoreTests(unittest.TestCase):
     def test_crop_region(self):
         self.assertEqual(crop_region(img(0), (0.0, 0.5, 0.5, 1.0)).size, (160, 90))
         self.assertEqual(crop_region(img(0), None).size, (320, 180))
+
+    def test_prepare_for_ocr_upscales_and_stays_rgb(self):
+        out = prepare_for_ocr(img(10, (20, 120, 300, 170)))
+        self.assertEqual(out.size, (800, 450))
+        self.assertEqual(out.mode, 'RGB')
 
     def test_clean_ocr_text(self):
         self.assertEqual(clean_ocr_text("I can't be-\nlieve  you\nare here."),

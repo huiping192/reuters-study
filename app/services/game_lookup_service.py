@@ -103,6 +103,9 @@ class GameLookupService:
                 if not lemma_entry:
                     unresolved.append(token)
                     continue
+                # 全大写词头是缩写（ICA），OCR 噪声很容易撞上
+                if lemma_entry['word'].isupper():
+                    continue
                 rank = lemma_entry['rank']
                 if (0 < rank <= KNOWN_RANK) or lemma in mastered:
                     continue

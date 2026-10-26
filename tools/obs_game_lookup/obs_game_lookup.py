@@ -12,7 +12,8 @@ import obsws_python as obs
 from PIL import Image
 
 from lookup_core import (StableChange, clean_ocr_text, crop_region, format_items,
-                         frame_signature, looks_like_dialogue, post_lookup, text_digest)
+                         frame_signature, looks_like_dialogue, post_lookup, prepare_for_ocr,
+                         text_digest)
 
 
 def grab(client, source, width):
@@ -37,6 +38,7 @@ def main(argv=None):
     p.add_argument('--host', default='localhost')
     p.add_argument('--port', type=int, default=4455)
     p.add_argument('--password', default='')
+    p.add_argument('--width', type=int, default=1920, help='向 OBS 要的截图宽度，越大 OCR 越准')
     p.add_argument('--interval', type=float, default=0.25)
     p.add_argument('--settle', type=float, default=0.4)
     p.add_argument('--once', action='store_true', help='只截一帧并打印 OCR 与查词结果，用于调 --region')
@@ -47,17 +49,17 @@ def main(argv=None):
     detector, last_digest = StableChange(args.settle), None
 
     if args.once:
-        frame = crop_region(grab(client, args.source, 960), region)
+        frame = crop_region(grab(client, args.source, args.width), region)
         frame.save('once_crop.png')
-        text = clean_ocr_text(windows_ocr(frame))
+        text = clean_ocr_text(windows_ocr(prepare_for_ocr(frame)))
         print('OCR:', repr(text))
         print('LOOKUP:', format_items(post_lookup(args.server, text, args.game + '-once')['items']))
         return
 
     while True:
-        frame = crop_region(grab(client, args.source, 960), region)
+        frame = crop_region(grab(client, args.source, args.width), region)
         if detector.feed(frame_signature(frame), time.monotonic()):
-            text = clean_ocr_text(windows_ocr(frame))
+            text = clean_ocr_text(windows_ocr(prepare_for_ocr(frame)))
             digest = text_digest(text)
             if looks_like_dialogue(text) and digest != last_digest:
                 last_digest = digest
@@ -66,7 +68,10 @@ def main(argv=None):
                     shown = format_items(result['items'])
                 except Exception as e:
                     shown = f'(查词失败: {e})'
-                client.set_input_settings(args.text_source, {'text': shown}, True)
+                try:
+                    client.set_input_settings(args.text_source, {'text': shown}, True)
+                except Exception as e:
+                    print(f'(写回 OBS 文本源 {args.text_source!r} 失败: {e})')
                 print(text, '->', shown.replace('\n', ' | '))
         time.sleep(args.interval)
 
