@@ -37,11 +37,20 @@ def main():
     p.add_argument('--password', default='')
     p.add_argument('--interval', type=float, default=0.25)
     p.add_argument('--settle', type=float, default=0.4)
+    p.add_argument('--once', action='store_true', help='只截一帧并打印 OCR 与查词结果，用于调 --region')
     args = p.parse_args()
 
     region = tuple(float(x) for x in args.region.split(',')) if args.region else None
     client = obs.ReqClient(host=args.host, port=args.port, password=args.password, timeout=5)
     detector, last_digest = StableChange(args.settle), None
+
+    if args.once:
+        frame = crop_region(grab(client, args.source, 960), region)
+        frame.save('once_crop.png')
+        text = clean_ocr_text(windows_ocr(frame))
+        print('OCR:', repr(text))
+        print('LOOKUP:', format_items(post_lookup(args.server, text, args.game + '-once')['items']))
+        return
 
     while True:
         frame = crop_region(grab(client, args.source, 960), region)
