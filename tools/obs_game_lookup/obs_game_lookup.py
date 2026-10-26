@@ -7,6 +7,7 @@ import argparse
 import base64
 import io
 import os
+import sys
 import time
 
 import obsws_python as obs
@@ -36,6 +37,16 @@ def obs_config_password():
         return json.load(f)['server_password']
 
 
+def connect(host, port, password):
+    # 开机自启时 OBS 可能还没起来，等它而不是崩溃
+    while True:
+        try:
+            return obs.ReqClient(host=host, port=port, password=password, timeout=5)
+        except Exception as e:
+            print(f'等待 OBS WebSocket ({type(e).__name__})...', flush=True)
+            time.sleep(5)
+
+
 def key_down(vk):
     import ctypes
     return bool(ctypes.windll.user32.GetAsyncKeyState(vk) & 0x8000)
@@ -61,6 +72,8 @@ def lookup_once(client, args, region):
 
 
 def main(argv=None):
+    # 日文 Windows 默认 cp932，打印中文释义会抛 UnicodeEncodeError
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     p = argparse.ArgumentParser()
     p.add_argument('--source', required=True, help='OBS 里的游戏画面源名称')
     p.add_argument('--text-source', default='LookupText', help='显示释义的文本源名称')
@@ -81,7 +94,7 @@ def main(argv=None):
 
     password = args.password or obs_config_password()
     region = tuple(float(x) for x in args.region.split(',')) if args.region else None
-    client = obs.ReqClient(host=args.host, port=args.port, password=password, timeout=5)
+    client = connect(args.host, args.port, password)
     detector, last_digest = StableChange(args.settle), None
 
     if args.once:
