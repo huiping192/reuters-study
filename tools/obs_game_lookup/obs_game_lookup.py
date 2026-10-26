@@ -16,8 +16,10 @@ from lookup_core import (StableChange, clean_ocr_text, crop_region, format_items
 
 
 def grab(client, source, width):
-    resp = client.get_source_screenshot(source, 'png', width, None, -1)
-    return Image.open(io.BytesIO(base64.b64decode(resp.image_data.split(',', 1)[1])))
+    # 包装方法会把可选字段序列化成 null，OBS 会按类型错误拒绝，所以只发必填项
+    data = client.send('GetSourceScreenshot', {
+        'sourceName': source, 'imageFormat': 'png', 'imageWidth': width}, raw=True)
+    return Image.open(io.BytesIO(base64.b64decode(data['imageData'].split(',', 1)[1])))
 
 
 def windows_ocr(img):
@@ -25,7 +27,7 @@ def windows_ocr(img):
     return winocr.recognize_pil_sync(img, 'en')['text']
 
 
-def main():
+def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument('--source', required=True, help='OBS 里的游戏画面源名称')
     p.add_argument('--text-source', default='LookupText', help='显示释义的文本源名称')
@@ -38,7 +40,7 @@ def main():
     p.add_argument('--interval', type=float, default=0.25)
     p.add_argument('--settle', type=float, default=0.4)
     p.add_argument('--once', action='store_true', help='只截一帧并打印 OCR 与查词结果，用于调 --region')
-    args = p.parse_args()
+    args = p.parse_args(argv)
 
     region = tuple(float(x) for x in args.region.split(',')) if args.region else None
     client = obs.ReqClient(host=args.host, port=args.port, password=args.password, timeout=5)
