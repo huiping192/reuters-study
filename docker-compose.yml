@@ -6,8 +6,10 @@ services:
       - "8007:5000"
     volumes:
       - ./data:/app/data
+      - ./dict:/app/dict:ro
     environment:
       - DATABASE_URL=sqlite:////app/data/vocabulary.db
       - FLASK_ENV=production
+      - GAME_DICT_PATH=/app/dict/game_dict.db
     # user: "${UID:-1000}:${GID:-1000}"  # 移除用户限制以避免权限问题
     restart: unless-stopped
