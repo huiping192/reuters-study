@@ -32,14 +32,19 @@ class ArticleProcessor:
             "translation": ""
         }
 
-        # 分割词汇和翻译部分
-        vocab_section, trans_section = raw_response.split("【Translation】")
+        # 按标记取段落，不依赖两段的先后顺序
+        trans_match = re.search(r'【Translation】(.*?)(?=【Vocabulary】|$)', raw_response, re.S)
+        vocab_match = re.search(r'【Vocabulary】(.*?)(?=【Translation】|$)', raw_response, re.S)
+        if not trans_match:
+            raise ValueError("AI 响应缺少【Translation】")
+        trans_section = trans_match.group(1)
 
         # 解析词汇部分
-        vocab_lines = [line.strip() for line in vocab_section.split("【Vocabulary】")[1].split("\n") if line.strip()]
+        vocab_lines = [line.strip() for line in (vocab_match.group(1) if vocab_match else '').split("\n") if line.strip()]
         for line in vocab_lines:
-            if line and '｜' in line:
-                parts = [p.strip() for p in line.split('｜')]
+            # 有的模型用半角 | 分隔
+            if line and ('｜' in line or '|' in line):
+                parts = [p.strip() for p in re.split(r'[｜|]', line)]
                 # 部分模型会多输出一列音标(单词｜音标｜词性｜释义｜例句)，不处理会导致整行错位
                 pronunciation = parts.pop(1) if len(parts) >= 5 and parts[1][:1] in ('/', '[') else ''
                 if len(parts) >= 4:  # 确保至少有4个部分
@@ -80,30 +85,27 @@ class ArticleProcessor:
 
     def _model_kwargs(self) -> dict:
         models = [m.strip() for m in config.OPENAI_MODEL.split(',') if m.strip()]
-        if len(models) == 1:
-            return {"model": models[0]}
-        # OpenRouter 的 models 参数：免费模型常被上游限流(429)，自动换下一个
-        return {"model": models[0], "extra_body": {"models": models}}
+        kwargs = {"model": models[0]}
+        if 'openrouter.ai' in config.OPENAI_BASE_URL:
+            # 翻译查词不需要推理；推理型免费模型会把 token 耗在思考上，慢且可能截断
+            extra_body = {"reasoning": {"enabled": False}}
+            if len(models) > 1:
+                # OpenRouter 的 models 参数：免费模型常被上游限流(429)，自动换下一个
+                extra_body["models"] = models
+            kwargs["extra_body"] = extra_body
+        return kwargs
 
     def _get_ai_response(self, text: str) -> ChatCompletion:
         """获取DeepSeek API响应"""
-        system_prompt = """作为专业英语教学助手，请：
-- 翻译为地道中文
-- 识别1-5个CEFR C2/C1级别词汇
-- 对每个词汇提供：
-   - 词性
-   - 中文释义
-   - 例句
-
-输出格式：
-
-【Vocabulary】
-单词｜词性｜中文释义｜例句
-单词｜词性｜中文释义｜例句
-...
+        # 输出 token 数决定耗时，限制例句长度、禁止多余说明
+        system_prompt = """你是英语教学助手。先把用户给的英文翻译成地道中文，再挑出其中1-5个 CEFR C1/C2 词汇。
+严格按以下格式输出，不要任何多余说明：
 
 【Translation】
-翻译内容
+中文译文
+
+【Vocabulary】
+单词｜词性｜中文释义｜例句(15词以内的简短英文句子)
 """
 
         return self.client.chat.completions.create(
