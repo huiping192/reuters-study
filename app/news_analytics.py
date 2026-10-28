@@ -51,6 +51,10 @@ class ArticleProcessor:
                 entries[-1].append(line)
 
         for parts in entries:
+            if len(parts) == 3 and re.match(r'[A-Z]', parts[2]):
+                # 词性和释义挤在同一列：单词｜adj.（…）释义｜例句
+                m = re.match(r'([a-zA-Z]+\.)\s*(.+)', parts[1])
+                parts = [parts[0], m.group(1), m.group(2), parts[2]] if m else [parts[0], '', parts[1], parts[2]]
             # 部分模型会多输出一列音标(单词｜音标｜词性｜释义｜例句)，不处理会导致整行错位
             pronunciation = parts.pop(1) if len(parts) >= 5 and parts[1][:1] in ('/', '[') else ''
             if len(parts) >= 4:  # 确保至少有4个部分
