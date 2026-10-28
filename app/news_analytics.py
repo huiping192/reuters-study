@@ -39,14 +39,17 @@ class ArticleProcessor:
         vocab_lines = [line.strip() for line in vocab_section.split("【Vocabulary】")[1].split("\n") if line.strip()]
         for line in vocab_lines:
             if line and '｜' in line:
-                parts = line.split('｜')
+                parts = [p.strip() for p in line.split('｜')]
+                # 部分模型会多输出一列音标(单词｜音标｜词性｜释义｜例句)，不处理会导致整行错位
+                pronunciation = parts.pop(1) if len(parts) >= 5 and parts[1][:1] in ('/', '[') else ''
                 if len(parts) >= 4:  # 确保至少有4个部分
                     result["vocabulary"].append({
                         # 部分模型(如 gemma)会给单词加 Markdown 粗体
-                        "word": parts[0].strip().strip('*').strip(),
-                        "pos": parts[1].strip(),
-                        "def_cn": parts[2].strip(),
-                        "example": parts[3].strip()  # 直接使用第四个部分作为例句
+                        "word": parts[0].strip('*').strip(),
+                        "pos": parts[1],
+                        "def_cn": parts[2],
+                        "example": parts[3],  # 直接使用第四个部分作为例句
+                        "pronunciation": pronunciation
                     })
 
         # 解析翻译部分
@@ -88,7 +91,6 @@ class ArticleProcessor:
 - 翻译为地道中文
 - 识别1-5个CEFR C2/C1级别词汇
 - 对每个词汇提供：
-   - 发音
    - 词性
    - 中文释义
    - 例句
@@ -154,8 +156,9 @@ PRON: 发音
             for line in content.split('\n'):
                 if ':' in line:
                     key, value = line.split(':', 1)
-                    key = key.strip().lower()
-                    value = value.strip()
+                    # 兼容 "**POS:** verb" 这类 Markdown 粗体输出
+                    key = key.strip().strip('*').lower()
+                    value = value.strip().strip('*').strip()
                     
                     if key == 'pos':
                         result['pos'] = value
