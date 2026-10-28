@@ -41,21 +41,27 @@ class ArticleProcessor:
 
         # 解析词汇部分
         vocab_lines = [line.strip() for line in (vocab_match.group(1) if vocab_match else '').split("\n") if line.strip()]
+        entries = []
         for line in vocab_lines:
             # 有的模型用半角 | 分隔
-            if line and ('｜' in line or '|' in line):
-                parts = [p.strip() for p in re.split(r'[｜|]', line)]
-                # 部分模型会多输出一列音标(单词｜音标｜词性｜释义｜例句)，不处理会导致整行错位
-                pronunciation = parts.pop(1) if len(parts) >= 5 and parts[1][:1] in ('/', '[') else ''
-                if len(parts) >= 4:  # 确保至少有4个部分
-                    result["vocabulary"].append({
-                        # 部分模型(如 gemma)会给单词加 Markdown 粗体
-                        "word": parts[0].strip('*').strip(),
-                        "pos": parts[1],
-                        "def_cn": parts[2],
-                        "example": parts[3],  # 直接使用第四个部分作为例句
-                        "pronunciation": pronunciation
-                    })
+            if '｜' in line or '|' in line:
+                entries.append([p.strip() for p in re.split(r'[｜|]', line)])
+            elif entries and len(entries[-1]) == 3:
+                # 有的模型把例句换行写在下一行
+                entries[-1].append(line)
+
+        for parts in entries:
+            # 部分模型会多输出一列音标(单词｜音标｜词性｜释义｜例句)，不处理会导致整行错位
+            pronunciation = parts.pop(1) if len(parts) >= 5 and parts[1][:1] in ('/', '[') else ''
+            if len(parts) >= 4:  # 确保至少有4个部分
+                result["vocabulary"].append({
+                    # 部分模型(如 gemma)会给单词加 Markdown 粗体
+                    "word": parts[0].strip('*').strip(),
+                    "pos": parts[1],
+                    "def_cn": parts[2],
+                    "example": parts[3],  # 直接使用第四个部分作为例句
+                    "pronunciation": pronunciation
+                })
 
         # 解析翻译部分
         result["translation"] = trans_section.strip()
@@ -99,7 +105,7 @@ class ArticleProcessor:
         """获取DeepSeek API响应"""
         # 输出 token 数决定耗时，限制例句长度、禁止多余说明
         system_prompt = """你是英语教学助手。先把用户给的英文翻译成地道中文，再挑出其中1-5个 CEFR C1/C2 词汇。
-严格按以下格式输出，不要任何多余说明：
+严格按以下格式输出，每个词汇占一行、四项都写在同一行，不要任何多余说明：
 
 【Translation】
 中文译文
