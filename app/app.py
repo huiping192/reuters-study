@@ -58,6 +58,10 @@ os.makedirs(TTS_DIR, exist_ok=True)
 
 tts_cache_service = TTSCacheService(os.path.join(DATA_DIR, 'tts_cache.db'), TTS_DIR)
 
+from services.translation_cache_service import TranslationCacheService
+
+translation_cache = TranslationCacheService(os.path.join(DATA_DIR, 'translation_cache.db'))
+
 
 @app.route('/')
 def index():
@@ -126,13 +130,17 @@ def translate():
         # 获取来源URL（如果有的话）
         source_url = data.get('source_url')
 
-        processor = ArticleProcessor()
-        # 传递用户ID和来源URL以启用词汇收集
-        translated_objc = processor.process_article(
-            input_text, 
-            user_id=user_id,
-            source_url=source_url
-        )
+        # 命中缓存时跳过词汇收集，用户删掉的词不会因重开文章被加回来
+        translated_objc = translation_cache.get(input_text)
+        if translated_objc is None:
+            processor = ArticleProcessor()
+            # 传递用户ID和来源URL以启用词汇收集
+            translated_objc = processor.process_article(
+                input_text,
+                user_id=user_id,
+                source_url=source_url
+            )
+            translation_cache.set(input_text, translated_objc)
 
         # 验证返回结果
         if not translated_objc:

@@ -42,7 +42,8 @@ class ArticleProcessor:
                 parts = line.split('｜')
                 if len(parts) >= 4:  # 确保至少有4个部分
                     result["vocabulary"].append({
-                        "word": parts[0].strip(),
+                        # 部分模型(如 gemma)会给单词加 Markdown 粗体
+                        "word": parts[0].strip().strip('*').strip(),
                         "pos": parts[1].strip(),
                         "def_cn": parts[2].strip(),
                         "example": parts[3].strip()  # 直接使用第四个部分作为例句
@@ -74,6 +75,13 @@ class ArticleProcessor:
         except Exception as e:
             print(f"词汇收集失败: {str(e)}")
 
+    def _model_kwargs(self) -> dict:
+        models = [m.strip() for m in config.OPENAI_MODEL.split(',') if m.strip()]
+        if len(models) == 1:
+            return {"model": models[0]}
+        # OpenRouter 的 models 参数：免费模型常被上游限流(429)，自动换下一个
+        return {"model": models[0], "extra_body": {"models": models}}
+
     def _get_ai_response(self, text: str) -> ChatCompletion:
         """获取DeepSeek API响应"""
         system_prompt = """作为专业英语教学助手，请：
@@ -97,7 +105,7 @@ class ArticleProcessor:
 """
 
         return self.client.chat.completions.create(
-            model="deepseek-chat",
+            **self._model_kwargs(),
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": text}
@@ -128,7 +136,7 @@ PRON: 发音
 
         try:
             response = self.client.chat.completions.create(
-                model="deepseek-chat",
+                **self._model_kwargs(),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": word}

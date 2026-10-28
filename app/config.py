@@ -14,6 +14,7 @@ class Config:
         self.TTS_SERVER_URL: str = self._get_optional('TTS_SERVER_URL')
         self.OPENAI_API_KEY: str = self._get_required('OPENAI_API_KEY')
         self.OPENAI_BASE_URL: str = self._get_optional('OPENAI_BASE_URL', 'https://api.openai.com/v1')
+        self.OPENAI_MODEL: str = self._get_optional('OPENAI_MODEL', 'deepseek-chat')
 
     def _get_required(self, key: str) -> str:
         """获取必需的环境变量"""

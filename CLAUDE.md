@@ -60,7 +60,8 @@ python test_vocabulary.py
 ### 环境变量 (.env文件)
 ```env
 OPENAI_API_KEY=your_key
-OPENAI_BASE_URL=https://api.deepseek.com/v1  # 可选
+OPENAI_BASE_URL=https://openrouter.ai/api/v1  # 可选
+OPENAI_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free,google/gemma-4-31b-it:free  # 可选，逗号分隔为 OpenRouter 自动降级链
 TTS_SERVER_URL=http://192.168.11.78:5100  # 可选，Mac 上的 kokoro TTS 服务
 ```
 

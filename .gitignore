@@ -185,3 +185,4 @@ tts_server/models/
 tts_server/logs/
 data/tts/
 data/tts_cache.db
+data/translation_cache.db
