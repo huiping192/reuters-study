@@ -174,6 +174,11 @@ PRON: 发音
                     # 多义词时模型会把内容换行写在字段名下面
                     result[current] = (result[current] + '\n' + line.strip()).strip()
 
+            if 'difficulty_level' in result:
+                # 模型常附带解释，如 "B2 (Upper Intermediate)"；生词本按等级精确筛选和统计
+                level = re.search(r'[ABC][12]', result['difficulty_level'])
+                result['difficulty_level'] = level.group(0) if level else ''
+
             return result
 
         except Exception as e:
