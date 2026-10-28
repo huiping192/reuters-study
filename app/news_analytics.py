@@ -152,26 +152,27 @@ PRON: 发音
             content = response.choices[0].message.content
             result = {}
             
+            fields = {
+                'pos': 'pos',
+                'def_cn': 'definition_cn',
+                'def_en': 'definition_en',
+                'example': 'example',
+                'level': 'difficulty_level',
+                'pron': 'pronunciation',
+            }
+            current = None
+
             # 解析每一行
             for line in content.split('\n'):
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    # 兼容 "**POS:** verb" 这类 Markdown 粗体输出
-                    key = key.strip().strip('*').lower()
-                    value = value.strip().strip('*').strip()
-                    
-                    if key == 'pos':
-                        result['pos'] = value
-                    elif key == 'def_cn':
-                        result['definition_cn'] = value
-                    elif key == 'def_en':
-                        result['definition_en'] = value
-                    elif key == 'example':
-                        result['example'] = value
-                    elif key == 'level':
-                        result['difficulty_level'] = value
-                    elif key == 'pron':
-                        result['pronunciation'] = value
+                key, sep, value = line.partition(':')
+                # 兼容 "**POS:** verb" 这类 Markdown 粗体输出
+                key = key.strip().strip('*').lower()
+                if sep and key in fields:
+                    current = fields[key]
+                    result[current] = value.strip().strip('*').strip()
+                elif current and line.strip():
+                    # 多义词时模型会把内容换行写在字段名下面
+                    result[current] = (result[current] + '\n' + line.strip()).strip()
 
             return result
 
