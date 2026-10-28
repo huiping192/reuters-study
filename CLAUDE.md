@@ -61,7 +61,7 @@ python test_vocabulary.py
 ```env
 OPENAI_API_KEY=your_key
 OPENAI_BASE_URL=https://api.deepseek.com/v1  # 可选
-REPLICATE_API_TOKEN=your_token
+TTS_SERVER_URL=http://192.168.11.78:5100  # 可选，Mac 上的 kokoro TTS 服务
 ```
 
 ### 关键API端点
@@ -89,4 +89,4 @@ REPLICATE_API_TOKEN=your_token
 - API密钥通过环境变量管理
 - 所有数据库操作使用SQLAlchemy ORM
 - 网络请求120秒超时设置
-- TTS音频文件本地缓存在static/tts/目录
+- TTS 由 Mac 上原生运行的 kokoro 服务生成(tts_server/install.sh 安装)，音频按文本哈希缓存在 data/tts/

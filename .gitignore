@@ -178,3 +178,10 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 dict/
+
+# TTS 服务(Mac 本地)
+tts_server/venv/
+tts_server/models/
+tts_server/logs/
+data/tts/
+data/tts_cache.db

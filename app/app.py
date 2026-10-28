@@ -3,7 +3,6 @@ from flask import Flask, render_template
 from flask import request, jsonify
 from flask_migrate import Migrate
 
-from audio_manager import generate_audio
 from news_analytics import ArticleProcessor
 from bbc_manager import get_bbc_news_with_category, get_bbc_article, split_into_paragraphs
 import urllib.parse
@@ -49,25 +48,15 @@ migrate = Migrate(app, db, directory=migrations_dir)
 
 # 数据库已在启动脚本中初始化，这里不需要再次执行
 
-# 配置音频存储路径
-TTS_DIR = os.path.join(app.static_folder, 'tts')
-os.makedirs(TTS_DIR, exist_ok=True)
-
 # 初始化TTS缓存服务
 from services.tts_cache_service import TTSCacheService
 
+# 音频和缓存库放进数据卷，重建容器后缓存不丢
+DATA_DIR = '/app/data' if os.path.isdir('/app/data') else os.path.join(basedir, '..', 'data')
+TTS_DIR = os.path.join(DATA_DIR, 'tts')
+os.makedirs(TTS_DIR, exist_ok=True)
 
-def get_tts_cache_db_path():
-    """获取TTS缓存数据库路径"""
-    if os.path.exists('/app/data/tts_cache.db'):
-        return '/app/data/tts_cache.db'
-    else:
-        data_dir = os.path.join(basedir, '..', 'data')
-        os.makedirs(data_dir, exist_ok=True)
-        return os.path.join(data_dir, 'tts_cache.db')
-
-
-tts_cache_service = TTSCacheService(get_tts_cache_db_path(), TTS_DIR)
+tts_cache_service = TTSCacheService(os.path.join(DATA_DIR, 'tts_cache.db'), TTS_DIR)
 
 
 @app.route('/')
@@ -173,10 +162,10 @@ def translate():
 def handle_tts():
     data = request.json
     try:
-        filename = generate_audio(data['text'], TTS_DIR)
+        _, audio_url = tts_cache_service.get_or_create_audio(data['text'], cache_type='paragraph')
         return jsonify({
             'success': True,
-            'audio_url': f'/tts/{filename}'
+            'audio_url': audio_url
         })
     except Exception as e:
         return jsonify({

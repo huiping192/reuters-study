@@ -201,12 +201,20 @@
                 throw new Error(data.error || 'TTS生成失败');
             }
         } catch (error) {
-            console.error('TTS错误:', error);
-            alert('语音生成失败: ' + error.message);
+            // TTS 服务在局域网的 Mac 上，Mac 关机时退回浏览器自带朗读
+            console.error('TTS错误，改用浏览器朗读:', error);
+            speakWithBrowser(paragraph);
         } finally {
             button.innerHTML = '<i class="fas fa-volume-up fa-sm"></i>';
             button.disabled = false;
         }
+    }
+
+    function speakWithBrowser(text) {
+        speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        speechSynthesis.speak(utterance);
     }
 </script>
 </body>

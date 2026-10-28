@@ -68,8 +68,8 @@ python app.py
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_BASE_URL=https://api.openai.com/v1  # 或使用 DeepSeek API
 
-# Replicate API（用于语音合成）
-REPLICATE_API_TOKEN=your_replicate_token
+# kokoro TTS 服务地址（可选，见 tts_server/）
+TTS_SERVER_URL=http://192.168.11.78:5100
 ```
 
 ### 可选环境变量

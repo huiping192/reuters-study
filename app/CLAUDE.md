@@ -22,7 +22,7 @@ pip install -r requirements.txt
 # 设置环境变量（需要创建 .env 文件）
 # OPENAI_API_KEY=your_openai_api_key
 # OPENAI_BASE_URL=https://api.deepseek.com/v1  # 可选
-# REPLICATE_API_TOKEN=your_replicate_token
+# TTS_SERVER_URL=http://192.168.11.78:5100  # 可选
 ```
 
 ### 运行应用
@@ -105,7 +105,7 @@ python app.py
 
 ### AI 服务集成
 - **翻译服务**: OpenAI API（支持 DeepSeek API）
-- **语音合成**: Replicate API
+- **语音合成**: Mac 上的 kokoro TTS 服务（tts_server/）
 - **词汇分析**: 自动识别 CEFR C1/C2 级别词汇
 
 ## 重要 API 端点
@@ -165,7 +165,7 @@ python app.py
 - 数据库操作使用 SQLAlchemy ORM 防止注入攻击
 
 ### 文件存储
-- TTS 音频文件存储在 `static/tts/` 目录
+- TTS 音频文件存储在 `data/tts/` 目录（按文本哈希缓存）
 - 数据库文件默认存储在 `data/` 目录
 
 ### 错误处理

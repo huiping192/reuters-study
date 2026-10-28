@@ -605,8 +605,8 @@ async function playWordTTS(word, event) {
             await audio.play();
         }
     } catch (error) {
-        console.error('单词TTS失败:', error);
-        showToast('语音生成失败: ' + error.message, 'error');
+        console.error('单词TTS失败，改用浏览器朗读:', error);
+        speakWithBrowser(word);
     } finally {
         button.innerHTML = originalHtml;
         button.disabled = false;
@@ -643,12 +643,20 @@ async function playSentenceTTS(vocabId, sentence, event) {
             await audio.play();
         }
     } catch (error) {
-        console.error('例句TTS失败:', error);
-        showToast('语音生成失败: ' + error.message, 'error');
+        console.error('例句TTS失败，改用浏览器朗读:', error);
+        speakWithBrowser(sentence);
     } finally {
         button.innerHTML = originalHtml;
         button.disabled = false;
     }
+}
+
+// TTS 服务在局域网的 Mac 上，Mac 关机时退回浏览器自带朗读
+function speakWithBrowser(text) {
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    speechSynthesis.speak(utterance);
 }
 
 // 从缓存播放

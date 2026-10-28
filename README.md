@@ -80,7 +80,7 @@ cd reuters-study
 # AI 服务配置
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_BASE_URL=https://api.deepseek.com/v1  # 可选，默认使用 OpenAI
-REPLICATE_API_TOKEN=your_replicate_token
+TTS_SERVER_URL=http://192.168.11.78:5100  # 可选，Mac 上的 kokoro TTS 服务(见 tts_server/)
 ```
 
 ### 3. 安装依赖
@@ -137,11 +137,11 @@ docker run -p 8000:5000 --env-file .env reuters-study
 |--------|------|------|--------|
 | `OPENAI_API_KEY` | ✅ | OpenAI/DeepSeek API 密钥 | - |
 | `OPENAI_BASE_URL` | ❌ | API 基础URL | `https://api.openai.com/v1` |
-| `REPLICATE_API_TOKEN` | ✅ | Replicate API 令牌 | - |
+| `TTS_SERVER_URL` | ❌ | kokoro TTS 服务地址，未配置时前端退回浏览器朗读 | - |
 
 ### 应用配置
 - **端口**：Flask 默认 5000，Docker 映射到 8000
-- **音频存储**：`app/static/tts/` 目录
+- **音频存储**：`data/tts/` 目录（按文本哈希缓存）
 - **请求超时**：120秒（AI API）
 
 ## 🔧 开发说明
@@ -186,7 +186,7 @@ docker run -p 8000:5000 --env-file .env reuters-study
 
 - [路透社](https://www.reuters.com/) - 新闻内容来源
 - [DeepSeek](https://www.deepseek.com/) - AI 翻译服务
-- [Replicate](https://replicate.com/) - 语音合成服务
+- [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) - 本地语音合成
 - [Flask](https://flask.palletsprojects.com/) - Web 框架
 
 ## 📞 联系方式
