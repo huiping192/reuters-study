@@ -140,7 +140,9 @@ def translate():
                 user_id=user_id,
                 source_url=source_url
             )
-            translation_cache.set(input_text, translated_objc)
+            # 生词为空多半是模型偶发格式错误，不缓存，下次点击可重试
+            if translated_objc.get('vocabulary'):
+                translation_cache.set(input_text, translated_objc)
 
         # 验证返回结果
         if not translated_objc:

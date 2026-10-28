@@ -90,8 +90,8 @@ class ArticleProcessor:
             # 翻译查词不需要推理；推理型免费模型会把 token 耗在思考上，慢且可能截断
             extra_body = {"reasoning": {"enabled": False}}
             if len(models) > 1:
-                # OpenRouter 的 models 参数：免费模型常被上游限流(429)，自动换下一个
-                extra_body["models"] = models
+                # OpenRouter 的 models 参数：免费模型常被上游限流(429)，自动换下一个；超过 3 个会直接 400
+                extra_body["models"] = models[:3]
             kwargs["extra_body"] = extra_body
         return kwargs
 
