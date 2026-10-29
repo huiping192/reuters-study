@@ -167,7 +167,7 @@ def get_news_article(url: str) -> str:
         headers = {"User-Agent": "Mozilla/5.0 (compatible; reuters-study-mcp/1.0)"}
         resp = requests.get(url, headers=headers, timeout=10)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+        soup = BeautifulSoup(resp.content, "html.parser")
 
         # BBC 文章正文在 article 标签里
         article = soup.find("article")

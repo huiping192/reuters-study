@@ -698,7 +698,7 @@ def ai_get_article():
         headers = {'User-Agent': 'Mozilla/5.0 (compatible; reuters-study/1.0)'}
         resp = requests.get(url, headers=headers, timeout=10)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, 'html.parser')
+        soup = BeautifulSoup(resp.content, 'html.parser')
         article = soup.find('article') or soup
         paragraphs = [p.get_text().strip() for p in article.find_all('p') if p.get_text().strip()]
         title_tag = soup.find('h1')

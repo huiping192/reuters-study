@@ -85,7 +85,7 @@ def get_bbc_article(url):
         response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
 
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(response.content, 'html.parser')
 
         # 提取标题
         title = None
