@@ -15,6 +15,7 @@ from utils.session_manager import SessionManager
 from services.vocabulary_service import VocabularyService
 from services.sentence_review_service import SentenceReviewService
 from services.game_lookup_service import GameLookupService
+from services.game_translate_service import GameTranslateService
 from models.learning_record import LearningRecord
 
 app = Flask(__name__)
@@ -336,6 +337,20 @@ def game_lookup():
         return jsonify({'success': True, 'items': items, 'unresolved': unresolved})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/game/translate', methods=['POST'])
+def game_translate():
+    """游戏对白整句翻译 + 生词语境释义，供 obs-game-lookup 调用。"""
+    data = request.get_json(silent=True)
+    if not data or not str(data.get('text', '')).strip():
+        return jsonify({'success': False, 'error': '缺少 text'}), 400
+    try:
+        translation, words = GameTranslateService.translate(
+            data['text'].strip(), data.get('context') or [], data.get('words') or [])
+        return jsonify({'success': True, 'translation': translation, 'words': words})
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'{type(e).__name__}: {e}'}), 502
 
 
 @app.route('/api/vocabulary/stats', methods=['GET'])

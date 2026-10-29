@@ -63,6 +63,8 @@ OPENAI_API_KEY=your_key
 OPENAI_BASE_URL=https://openrouter.ai/api/v1  # 可选
 OPENAI_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free,google/gemma-4-31b-it:free  # 可选，逗号分隔为 OpenRouter 自动降级链
 TTS_SERVER_URL=http://192.168.11.78:5100  # 可选，Mac 上的 kokoro TTS 服务
+GAME_TRANSLATE_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free,...  # 可选，/api/game/translate 的降级链，不设则用 OPENAI_MODEL
+GAME_TRANSLATE_TIMEOUT=8  # 可选，游戏翻译超时秒数
 ```
 
 ### 关键API端点

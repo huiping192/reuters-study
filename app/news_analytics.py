@@ -93,8 +93,8 @@ class ArticleProcessor:
         except Exception as e:
             print(f"词汇收集失败: {str(e)}")
 
-    def _model_kwargs(self) -> dict:
-        models = [m.strip() for m in config.OPENAI_MODEL.split(',') if m.strip()]
+    def _model_kwargs(self, model_setting=None) -> dict:
+        models = [m.strip() for m in (model_setting or config.OPENAI_MODEL).split(',') if m.strip()]
         kwargs = {"model": models[0]}
         if 'openrouter.ai' in config.OPENAI_BASE_URL:
             # 翻译查词不需要推理；推理型免费模型会把 token 耗在思考上，慢且可能截断
